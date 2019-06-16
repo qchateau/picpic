@@ -1,59 +1,85 @@
+#include <chrono>
+#include <filesystem>
 #include <iostream>
 #include <string>
-#include <filesystem>
-#include <chrono>
 
+#include <boost/program_options.hpp>
+
+#include "directory_iterator.hpp"
 #include "hasher.hpp"
 #include "index.hpp"
+#include "server.hpp"
 
 namespace fs = std::filesystem;
+namespace po = boost::program_options;
 
-int main(int argc, char* argv[]) {
-    if (argc < 2) {
-        std::cerr << "give at least one path" << std::endl;
+using Clock = std::chrono::steady_clock;
+using Indexer = indexer::file_index<indexer::sha1>;
+using Protocol = boost::asio::ip::tcp;
+
+constexpr int kDefaultPort = 54321;
+
+int main(int argc, char* argv[])
+{
+    uint16_t port;
+    std::vector<std::string> paths;
+
+    po::options_description desc("Usage");
+    // clang-format off
+    desc.add_options()
+        ("help,h", "produce help message")
+        ("port,p", po::value<uint16_t>(&port)->default_value(kDefaultPort),
+            "TCP port on which the server will listen")
+        ("directories,d", po::value<std::vector<std::string> >(&paths),
+            "directories that will be parsed");
+    // clang-format on
+
+    po::positional_options_description p;
+    p.add("directories", -1);
+
+    po::variables_map vm;
+    try {
+        auto parsed = po::command_line_parser(argc, argv)
+                          .options(desc)
+                          .positional(p)
+                          .run();
+        po::store(parsed, vm);
+        po::notify(vm);
+    }
+    catch (std::exception& e) {
+        std::cerr << e.what() << std::endl;
+        std::cerr << desc << std::endl;
+        return -1;
+    }
+
+    if (vm.count("help")) {
+        std::cout << desc << std::endl;
         return 0;
     }
 
-    std::cout << "parsing " << argv[1] << " ..." << std::endl;
-    auto start_index_time = std::chrono::steady_clock::now();
+    boost::asio::io_context io;
 
-    indexer::file_index<indexer::sha1> index;
-    int cnt = 0;
-    auto dir_it = fs::recursive_directory_iterator(
-        argv[1], fs::directory_options::skip_permission_denied);
-    for (auto& p: dir_it) {
-        if (fs::is_regular_file(p)) {
-            index.push(p);
-            ++cnt;
-        }
-    }
+    auto index = std::make_shared<Indexer>();
+    std::vector<std::shared_ptr<indexer::directory_iterator>> dirits;
+    std::transform(
+        paths.begin(),
+        paths.end(),
+        std::back_inserter(dirits),
+        [&](const std::string& path) {
+            auto dirit = std::make_shared<indexer::directory_iterator>(
+                io,
+                path,
+                fs::directory_options::skip_permission_denied,
+                [index](const fs::path& p) { index->push(p); },
+                [](const fs::path& p) { return fs::is_regular_file(p); });
+            dirit->start();
+            return dirit;
+        });
 
-    auto index_d= std::chrono::steady_clock::now() - start_index_time;
-    std::cout << index.serialize(2) << std::endl;
-    std::cout << "parsed " << cnt << " files in "
-        << std::chrono::nanoseconds(index_d).count() / 1e6 << "ms" << std::endl;
+    Protocol::endpoint ep{boost::asio::ip::make_address("127.0.0.1"), port};
+    indexer::server<Protocol, Indexer> server(index, io, ep);
 
-    while (true) {
-        int size;
-        std::string hash;
-        std::cout << "Enter size: " << std::endl;
-        std::cin >> size;
-        std::cout << "Enter hash:" << std::endl;
-        std::cin >> hash;
-        hash = indexer::hex_to_hash(hash);
-
-        auto start_time = std::chrono::steady_clock::now();
-        auto path = index.pull(size, hash);
-        auto d = std::chrono::steady_clock::now() - start_time;
-        if (path) {
-            std::cout << *path << std::endl;
-        }
-        else {
-            std::cout << "not found" << std::endl;
-        }
-        std::cout << "  " << std::chrono::nanoseconds(d).count() / 1e6
-            << "ms" << std::endl;
-    }
+    io.run();
 
     return 0;
 }

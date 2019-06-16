@@ -1,37 +1,47 @@
 #pragma once
 
-#include <openssl/sha.h>
+#include <algorithm>
+#include <array>
 #include <filesystem>
 #include <fstream>
-#include <array>
-#include <algorithm>
 #include <iomanip>
 #include <sstream>
+#include <string_view>
+
+#include <openssl/sha.h>
+#include <spdlog/spdlog.h>
 
 namespace indexer {
 
-inline std::string hash_to_hex(const std::string& s) {
+template <typename Hash>
+inline std::string hash_to_hex(const Hash& hash)
+{
     std::ostringstream ret;
-    std::for_each(s.begin(), s.end(), [&](char c) {
+    std::for_each(hash.begin(), hash.end(), [&](char c) {
         int ic = static_cast<int>(static_cast<unsigned char>(c));
         ret << std::hex << std::setfill('0') << std::setw(2) << ic;
     });
     return ret.str();
 }
 
-inline std::string hex_to_hash(const std::string& s) {
-    std::string hash(SHA_DIGEST_LENGTH, '\0');
-    for (std::size_t i=0; i<hash.size(); ++i) {
-        hash[i] = std::stoi(s.substr(i*2, 2), nullptr, 16);
+template <typename Hash>
+inline Hash hex_to_hash(const std::string& s)
+{
+    Hash hash;
+    for (std::size_t i = 0; i < hash.size(); ++i) {
+        hash[i] = std::stoi(s.substr(i * 2, 2), nullptr, 16);
     }
     return hash;
 }
 
 struct sha1 {
     static constexpr int kChunkSize = 4096;
+    static constexpr int kHashSize = SHA_DIGEST_LENGTH;
+    using hash_type = std::array<char, kHashSize>;
 
-    std::string operator()(const std::filesystem::path& p) {
-        std::array<char, kChunkSize> buffer;
+    hash_type operator()(const std::filesystem::path& p)
+    {
+        hash_type hash;
         std::ifstream f(p);
         std::streamsize bytes;
         SHA_CTX ctx;
@@ -39,14 +49,28 @@ struct sha1 {
         SHA1_Init(&ctx);
 
         do {
-            bytes = f.readsome(buffer.data(), buffer.size());
-            SHA1_Update(&ctx, buffer.data(), bytes);
+            bytes = f.readsome(hash.data(), hash.size());
+            SHA1_Update(&ctx, hash.data(), bytes);
         } while (bytes > 0);
 
-        SHA1_Final(reinterpret_cast<unsigned char*>(buffer.data()), &ctx);
+        SHA1_Final(reinterpret_cast<unsigned char*>(hash.data()), &ctx);
 
-        return std::string(buffer.data(), SHA_DIGEST_LENGTH);
+        SPDLOG_TRACE("{}: {}", p.string(), hash_to_hex(hash));
+        return hash;
     }
 };
 
-} // indexer
+} // namespace indexer
+
+namespace std {
+
+template <>
+struct hash<indexer::sha1::hash_type> {
+    std::size_t operator()(const indexer::sha1::hash_type& arg) const
+    {
+        return std::hash<std::string_view>{}(
+            std::string_view(arg.data(), arg.size()));
+    }
+};
+
+} // namespace std
