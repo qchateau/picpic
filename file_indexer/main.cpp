@@ -39,10 +39,8 @@ int main(int argc, char* argv[])
 
     po::variables_map vm;
     try {
-        auto parsed = po::command_line_parser(argc, argv)
-                          .options(desc)
-                          .positional(p)
-                          .run();
+        auto parsed =
+            po::command_line_parser(argc, argv).options(desc).positional(p).run();
         po::store(parsed, vm);
         po::notify(vm);
     }

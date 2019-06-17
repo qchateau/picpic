@@ -19,8 +19,7 @@ public:
     using path_variant = std::variant<fs::path, path_hash_map>;
     using path_size_map = std::unordered_map<std::uintmax_t, path_variant>;
 
-    std::optional<fs::path> pull(
-        std::uintmax_t size, const hash_type& hash) const
+    std::optional<fs::path> pull(std::uintmax_t size, const hash_type& hash) const
     {
         auto it = file_map_.find(size);
         if (it == file_map_.end()) {

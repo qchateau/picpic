@@ -4,10 +4,10 @@
 #include <memory>
 
 #include <boost/asio.hpp>
+#include <spdlog/spdlog.h>
 
 #include "hasher.hpp"
 #include "index.hpp"
-#include <spdlog/spdlog.h>
 
 namespace indexer {
 
@@ -73,8 +73,7 @@ private:
 
     std::optional<fs::path> pull(const request& req)
     {
-        return index_->pull(
-            std::get<std::size_t>(req), std::get<hash_type>(req));
+        return index_->pull(std::get<std::size_t>(req), std::get<hash_type>(req));
     }
 
     void do_read()
@@ -134,9 +133,7 @@ private:
         boost::asio::async_write(
             socket_,
             boost::asio::buffer(response_),
-            [this, self](boost::system::error_code, std::size_t) {
-                do_read();
-            });
+            [this, self](boost::system::error_code, std::size_t) { do_read(); });
     }
 
     std::shared_ptr<Index> index_;
@@ -165,12 +162,10 @@ public:
 private:
     void do_accept()
     {
-        acceptor_.async_accept([this](
-                                   boost::system::error_code ec, socket sock) {
+        acceptor_.async_accept([this](boost::system::error_code ec, socket sock) {
             if (!ec) {
                 SPDLOG_INFO("accepting connection");
-                std::make_shared<session<socket, Index>>(
-                    index_, std::move(sock))
+                std::make_shared<session<socket, Index>>(index_, std::move(sock))
                     ->start();
             }
             else {

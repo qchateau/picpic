@@ -3,7 +3,6 @@
 #include <filesystem>
 
 #include <boost/asio.hpp>
-
 #include <spdlog/spdlog.h>
 
 namespace indexer {
