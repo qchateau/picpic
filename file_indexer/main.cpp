@@ -24,9 +24,6 @@ std::shared_ptr<indexer::directory_iterator> make_directory_iterator(
     const std::shared_ptr<Indexer>& index,
     const fs::path& path)
 {
-    using std::chrono::duration_cast;
-    using fseconds = std::chrono::duration<double>;
-
     auto start_time = Clock::now();
     auto fast_dirit = std::make_shared<indexer::directory_iterator>(
         io,
@@ -37,8 +34,11 @@ std::shared_ptr<indexer::directory_iterator> make_directory_iterator(
             SPDLOG_INFO(
                 "parsed {} in {:.3f}s ({} files).",
                 path.string(),
-                duration_cast<fseconds>(Clock::now() - start_time).count(),
+                std::chrono::duration_cast<std::chrono::duration<double>>(
+                    Clock::now() - start_time)
+                    .count(),
                 nr);
+            (void)nr;
         },
         [](const fs::path& p) { return fs::is_regular_file(p); });
 
