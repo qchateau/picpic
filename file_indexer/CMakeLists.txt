@@ -14,6 +14,8 @@ find_package(Threads REQUIRED)
 
 set(SPDLOG_SOURCE_DIR ${CMAKE_BINARY_DIR}/spdlog)
 set(SPDLOG_INCLUDE_DIRS ${SPDLOG_SOURCE_DIR}/include)
+set(LIBFNV_SOURCE_DIR ${CMAKE_BINARY_DIR}/libfnv)
+set(LIBFNV_INSTALL_DIR ${CMAKE_BINARY_DIR}/install/libfnv)
 
 include(ExternalProject)
 ExternalProject_Add(

@@ -19,7 +19,7 @@ public:
     using path_variant = std::variant<fs::path, path_hash_map>;
     using path_size_map = std::unordered_map<std::uintmax_t, path_variant>;
 
-    std::optional<fs::path> pull(std::uintmax_t size, const hash_type& hash) const
+    std::optional<fs::path> pull(std::uintmax_t size, const hash_type& hash)
     {
         auto it = file_map_.find(size);
         if (it == file_map_.end()) {
@@ -27,32 +27,40 @@ public:
         }
 
         if (std::holds_alternative<fs::path>(it->second)) {
-            return std::get<fs::path>(it->second);
+            reindex_with_hash(it);
         }
-        else {
-            const auto& map = std::get<path_hash_map>(it->second);
-            auto hash_it = map.find(hash);
-            if (hash_it == map.end()) {
-                return std::nullopt;
-            }
-            return hash_it->second;
+
+        const auto& map = std::get<path_hash_map>(it->second);
+        auto hash_it = map.find(hash);
+        if (hash_it == map.end()) {
+            return std::nullopt;
         }
+        return hash_it->second;
     }
 
-    void push(const fs::path& p)
+    void push(const fs::path& p, bool defer_hash)
     {
         std::uintmax_t size = fs::file_size(p);
         auto it = file_map_.find(size);
         if (it == file_map_.end()) {
-            SPDLOG_TRACE("indexing {} by size", p.string());
-            file_map_.emplace_hint(it, size, p);
+            if (defer_hash) {
+                SPDLOG_TRACE("indexing {} by size", p.string());
+                file_map_.emplace_hint(it, size, p);
+            }
+            else {
+                SPDLOG_TRACE("indexing {} by hash", p.string());
+                file_map_.emplace_hint(it, size, path_hash_map{{Hasher{}(p), p}});
+            }
         }
         else if (std::holds_alternative<fs::path>(it->second)) {
-            SPDLOG_TRACE("indexing {} by hash, rehashing", p.string());
             const auto& existing_path = std::get<fs::path>(it->second);
             if (p != existing_path) {
-                it->second = path_hash_map{
-                    {Hasher{}(existing_path), existing_path}, {Hasher{}(p), p}};
+                reindex_with_hash(it);
+                SPDLOG_TRACE("indexing {} by hash", p.string());
+                std::get<path_hash_map>(it->second).insert({Hasher{}(p), p});
+            }
+            else if (!defer_hash) {
+                reindex_with_hash(it);
             }
         }
         else {
@@ -62,6 +70,16 @@ public:
     }
 
 private:
+    void reindex_with_hash(const typename path_size_map::iterator& it)
+    {
+        assert(std::holds_alternative<fs::path>(it->second));
+        assert(it != file_map_.end());
+
+        const auto& p = std::get<fs::path>(it->second);
+        SPDLOG_TRACE("reindexing {} by hash", p.string());
+        it->second = path_hash_map{{Hasher{}(p), p}};
+    }
+
     path_size_map file_map_;
 };
 

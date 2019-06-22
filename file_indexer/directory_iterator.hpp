@@ -17,11 +17,13 @@ public:
         const fs::path& root,
         fs::directory_options options,
         std::function<void(const fs::path&)> handler,
+        std::function<void(std::size_t)> completion_handler = [](std::size_t) {},
         std::function<bool(const fs::path&)> filter =
             [](const fs::path&) { return true; })
         : io_{io},
           root_{root},
           handler_{std::move(handler)},
+          completion_handler_{std::move(completion_handler)},
           filter_{std::move(filter)},
           dir_iterator_{root, options}
     {
@@ -32,33 +34,26 @@ public:
     directory_iterator& operator=(const directory_iterator&) = delete;
     directory_iterator& operator=(directory_iterator&&) = delete;
 
-    void start()
-    {
-        start_time_ = Clock::now();
-        async_iter_one();
-    }
+    void start() { async_iter_one(); }
 
 private:
-    using Clock = std::chrono::steady_clock;
-
-    void async_iter_one()
+    void async_iter_one(int handled = 0)
     {
         auto self = shared_from_this();
-        boost::asio::post(io_, [this, self] {
+        boost::asio::post(io_, [this, self, handled] {
             if (dir_iterator_ != std::filesystem::end(dir_iterator_)) {
                 const auto& p = *(dir_iterator_++);
+                int new_handled = handled;
+
                 if (filter_(p)) {
                     handler_(p);
+                    ++new_handled;
                 }
 
-                async_iter_one();
+                async_iter_one(new_handled);
             }
             else {
-                SPDLOG_INFO(
-                    "parsed {} in {:.3f}s",
-                    root_.string(),
-                    std::chrono::nanoseconds(Clock::now() - start_time_).count()
-                        / 1e9);
+                completion_handler_(handled);
             }
         });
     }
@@ -66,9 +61,9 @@ private:
     boost::asio::io_context& io_;
     fs::path root_;
     std::function<void(const fs::path&)> handler_;
+    std::function<void(std::size_t)> completion_handler_;
     std::function<bool(const fs::path&)> filter_;
     fs::recursive_directory_iterator dir_iterator_;
-    Clock::time_point start_time_;
 };
 
 } // namespace indexer

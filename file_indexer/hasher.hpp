@@ -42,18 +42,82 @@ struct sha1 {
     hash_type operator()(const std::filesystem::path& p)
     {
         hash_type hash;
-        std::ifstream f(p);
-        std::streamsize bytes;
+        std::size_t bytes;
         SHA_CTX ctx;
+        std::FILE* in = std::fopen(p.c_str(), "rb");
+        if (!in) {
+            throw std::runtime_error(std::strerror(errno));
+        }
 
         SHA1_Init(&ctx);
 
         do {
-            bytes = f.readsome(hash.data(), hash.size());
+            bytes = std::fread(hash.data(), 1, hash.size(), in);
             SHA1_Update(&ctx, hash.data(), bytes);
         } while (bytes > 0);
 
         SHA1_Final(reinterpret_cast<unsigned char*>(hash.data()), &ctx);
+        std::fclose(in);
+
+        SPDLOG_TRACE("{}: {}", p.string(), hash_to_hex(hash));
+        return hash;
+    }
+};
+
+struct sha256 {
+    static constexpr int kChunkSize = 4096;
+    static constexpr int kHashSize = SHA256_DIGEST_LENGTH;
+    using hash_type = std::array<char, kHashSize>;
+
+    hash_type operator()(const std::filesystem::path& p)
+    {
+        hash_type hash;
+        std::size_t bytes;
+        SHA256_CTX ctx;
+        std::FILE* in = std::fopen(p.c_str(), "rb");
+        if (!in) {
+            throw std::runtime_error(std::strerror(errno));
+        }
+
+        SHA256_Init(&ctx);
+
+        do {
+            bytes = std::fread(hash.data(), 1, hash.size(), in);
+            SHA256_Update(&ctx, hash.data(), bytes);
+        } while (bytes > 0);
+
+        SHA256_Final(reinterpret_cast<unsigned char*>(hash.data()), &ctx);
+        std::fclose(in);
+
+        SPDLOG_TRACE("{}: {}", p.string(), hash_to_hex(hash));
+        return hash;
+    }
+};
+
+struct sha512 {
+    static constexpr int kChunkSize = 4096;
+    static constexpr int kHashSize = SHA512_DIGEST_LENGTH;
+    using hash_type = std::array<char, kHashSize>;
+
+    hash_type operator()(const std::filesystem::path& p)
+    {
+        hash_type hash;
+        std::size_t bytes;
+        SHA512_CTX ctx;
+        std::FILE* in = std::fopen(p.c_str(), "rb");
+        if (!in) {
+            throw std::runtime_error(std::strerror(errno));
+        }
+
+        SHA512_Init(&ctx);
+
+        do {
+            bytes = std::fread(hash.data(), 1, hash.size(), in);
+            SHA512_Update(&ctx, hash.data(), bytes);
+        } while (bytes > 0);
+
+        SHA512_Final(reinterpret_cast<unsigned char*>(hash.data()), &ctx);
+        std::fclose(in);
 
         SPDLOG_TRACE("{}: {}", p.string(), hash_to_hex(hash));
         return hash;
@@ -67,6 +131,24 @@ namespace std {
 template <>
 struct hash<indexer::sha1::hash_type> {
     std::size_t operator()(const indexer::sha1::hash_type& arg) const
+    {
+        return std::hash<std::string_view>{}(
+            std::string_view(arg.data(), arg.size()));
+    }
+};
+
+template <>
+struct hash<indexer::sha256::hash_type> {
+    std::size_t operator()(const indexer::sha256::hash_type& arg) const
+    {
+        return std::hash<std::string_view>{}(
+            std::string_view(arg.data(), arg.size()));
+    }
+};
+
+template <>
+struct hash<indexer::sha512::hash_type> {
+    std::size_t operator()(const indexer::sha512::hash_type& arg) const
     {
         return std::hash<std::string_view>{}(
             std::string_view(arg.data(), arg.size()));

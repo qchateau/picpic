@@ -27,15 +27,9 @@ public:
     {
     }
 
-    ~session()
-    {
-        SPDLOG_INFO("closing connection");
-    }
+    ~session() { SPDLOG_INFO("closing connection"); }
 
-    void start()
-    {
-        do_read();
-    }
+    void start() { do_read(); }
 
 private:
     using std::enable_shared_from_this<session>::shared_from_this;
@@ -121,8 +115,8 @@ private:
 
     void do_write()
     {
-        std::chrono::nanoseconds request_duration =
-            Clock::now() - start_of_request_;
+        std::chrono::nanoseconds request_duration = Clock::now()
+                                                    - start_of_request_;
         SPDLOG_INFO(
             "response: {} ({}ms)",
             response_.substr(0, response_.size() - 1),

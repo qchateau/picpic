@@ -14,10 +14,37 @@ namespace fs = std::filesystem;
 namespace po = boost::program_options;
 
 using Clock = std::chrono::steady_clock;
-using Indexer = indexer::file_index<indexer::sha1>;
+using Indexer = indexer::file_index<indexer::sha512>;
 using Protocol = boost::asio::ip::tcp;
 
 constexpr int kDefaultPort = 54321;
+
+std::shared_ptr<indexer::directory_iterator> make_directory_iterator(
+    boost::asio::io_context& io,
+    const std::shared_ptr<Indexer>& index,
+    const fs::path& path)
+{
+    using std::chrono::duration_cast;
+    using fseconds = std::chrono::duration<double>;
+
+    auto start_time = Clock::now();
+    auto fast_dirit = std::make_shared<indexer::directory_iterator>(
+        io,
+        path,
+        fs::directory_options::skip_permission_denied,
+        [index](const fs::path& p) { index->push(p, true); },
+        [path, start_time](std::size_t nr) {
+            SPDLOG_INFO(
+                "parsed {} in {:.3f}s ({} files).",
+                path.string(),
+                duration_cast<fseconds>(Clock::now() - start_time).count(),
+                nr);
+        },
+        [](const fs::path& p) { return fs::is_regular_file(p); });
+
+    fast_dirit->start();
+    return fast_dirit;
+}
 
 int main(int argc, char* argv[])
 {
@@ -64,14 +91,7 @@ int main(int argc, char* argv[])
         paths.end(),
         std::back_inserter(dirits),
         [&](const std::string& path) {
-            auto dirit = std::make_shared<indexer::directory_iterator>(
-                io,
-                path,
-                fs::directory_options::skip_permission_denied,
-                [index](const fs::path& p) { index->push(p); },
-                [](const fs::path& p) { return fs::is_regular_file(p); });
-            dirit->start();
-            return dirit;
+            return make_directory_iterator(io, index, path);
         });
 
     Protocol::endpoint ep{boost::asio::ip::make_address("127.0.0.1"), port};
