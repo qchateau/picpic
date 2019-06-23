@@ -16,18 +16,8 @@
 
 namespace picpic {
 
-MainWindow::MainWindow() : model_(new QSqlTableModel(this))
+MainWindow::MainWindow()
 {
-    // Database
-    // TODO properly
-    qDebug() << "Initalizing database";
-    auto res = initializeDatabase();
-    if (res.type() != QSqlError::NoError) {
-        qDebug() << "failed: " << res.text();
-    }
-
-    model_ = pictures::createModel(kPicturesTable, this);
-
     // File scanner
     scanner_ = new FileScanner(this);
     connect(scanner_, &FileScanner::newFile, this, &MainWindow::onNewFile);
@@ -40,7 +30,7 @@ MainWindow::MainWindow() : model_(new QSqlTableModel(this))
 
 void MainWindow::onNewFile(QString hash, qint64 size)
 {
-    pictures::insert(model_, hash, size, 0);
+    model_->insert(hash, size, 0);
 }
 
 void MainWindow::onScanDone()
@@ -68,29 +58,18 @@ void MainWindow::onSaveAction()
     }
 }
 
-void MainWindow::onSaveAsAction()
-{
-    QString path = QFileDialog::getSaveFileName(this, "Save library as");
-    qDebug() << "Saving as" << path;
-    // TODO
-}
-
 void MainWindow::onNewAction()
 {
-    // TODO
+    QString path = QFileDialog::getSaveFileName(this, "New library");
+    qDebug() << "New" << path;
+    createNewModel(path);
 }
 
 void MainWindow::onOpenAction()
 {
     QString path = QFileDialog::getOpenFileName(this, "Open library");
     qDebug() << "Opening" << path;
-    // TODO
-    QSqlDatabase db = QSqlDatabase::database();
-    db.setDatabaseName(path);
-    if (!db.open()) {
-        QMessageBox::warning(
-            this, "Error", "Failed to open library: " + db.lastError().text());
-    }
+    createNewModel(path);
 }
 
 void MainWindow::createActions()
@@ -115,11 +94,6 @@ void MainWindow::createActions()
     save_act->setStatusTip("Save current library");
     connect(save_act, &QAction::triggered, this, &MainWindow::onSaveAction);
 
-    QAction* save_as_act = new QAction(save_icon, "Save as", this);
-    save_as_act->setShortcuts(QKeySequence::SaveAs);
-    save_as_act->setStatusTip("Save current library as");
-    connect(save_as_act, &QAction::triggered, this, &MainWindow::onSaveAsAction);
-
     QIcon open_icon = style()->standardIcon(QStyle::SP_DialogOpenButton);
     QAction* open_act = new QAction(open_icon, "&Open", this);
     open_act->setShortcuts(QKeySequence::Open);
@@ -129,23 +103,34 @@ void MainWindow::createActions()
     file_menu->addAction(new_act);
     file_menu->addAction(open_act);
     file_menu->addAction(save_act);
-    file_menu->addAction(save_as_act);
     file_menu->addAction(scan_act);
 }
 
 void MainWindow::createMainWidget()
 {
-    QTableView* table_view = new QTableView(this);
-    table_view->setModel(model_);
-    table_view->setColumnHidden(0, true);
-    table_view->verticalHeader()->setVisible(false);
-    for (int c = 0; c < table_view->horizontalHeader()->count(); ++c) {
-        table_view->horizontalHeader()->setSectionResizeMode(c, QHeaderView::Stretch);
+    table_view_ = new QTableView(this);
+    table_view_->setColumnHidden(0, true);
+    table_view_->verticalHeader()->setVisible(false);
+    for (int c = 0; c < table_view_->horizontalHeader()->count(); ++c) {
+        table_view_->horizontalHeader()->setSectionResizeMode(
+            c, QHeaderView::Stretch);
     }
 
     QTabWidget* tabs = new QTabWidget;
-    tabs->addTab(table_view, "Table");
+    tabs->addTab(table_view_, "Table");
     setCentralWidget(tabs);
+}
+
+void MainWindow::createNewModel(const QString& path)
+{
+    // Database
+    auto db = openPicDatabase(path);
+    if (model_) {
+        delete model_;
+        model_ = nullptr;
+    }
+    model_ = new PicModel(db, this);
+    table_view_->setModel(model_);
 }
 
 void MainWindow::startScanning(const QString& dir)

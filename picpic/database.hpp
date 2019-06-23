@@ -1,5 +1,6 @@
 #pragma once
 
+#include <QDebug>
 #include <QSqlError>
 #include <QSqlQuery>
 #include <QSqlTableModel>
@@ -7,6 +8,7 @@
 
 namespace picpic {
 
+constexpr const char* kPicturesConnectionName = "pictures";
 constexpr const char* kPicturesTable = "pictures";
 constexpr const char* kPicturesTableCreationQuery =
     "create table pictures ("
@@ -16,48 +18,50 @@ constexpr const char* kPicturesTableCreationQuery =
     "stars tinyint"
     ")";
 
-inline QSqlError initializeDatabase()
+inline QSqlDatabase openPicDatabase(const QString& path)
 {
-    auto db = QSqlDatabase::addDatabase("QSQLITE");
-    db.setDatabaseName("db.sqlite");
-    if (!db.open()) {
-        return db.lastError();
-    }
-
-    if (!db.tables().contains(kPicturesTable)) {
-        QSqlQuery query(db);
-        if (!query.exec(kPicturesTableCreationQuery)) {
-            return query.lastError();
+    QSqlDatabase db =
+        QSqlDatabase::addDatabase("QSQLITE", kPicturesConnectionName);
+    db.setDatabaseName(path);
+    if (db.open()) {
+        if (!db.tables().contains(kPicturesTable)) {
+            QSqlQuery query(db);
+            if (!query.exec(kPicturesTableCreationQuery)) {
+                qDebug() << "failed to create pictures table:"
+                         << query.lastError().text();
+            }
+            else {
+                qDebug() << "created pictures table";
+            }
         }
     }
-
-    return {};
+    return db;
 }
 
-namespace pictures {
+class PicModel : public QSqlTableModel {
+    Q_OBJECT
+public:
+    PicModel(QSqlDatabase db, QObject* parent) : QSqlTableModel(parent, db)
+    {
+        setTable(kPicturesTable);
+        setEditStrategy(QSqlTableModel::OnManualSubmit);
+        select();
+        setHeaderData(0, Qt::Horizontal, "ID");
+        setHeaderData(1, Qt::Horizontal, "Hash");
+        setHeaderData(2, Qt::Horizontal, "Size");
+        setHeaderData(3, Qt::Horizontal, "Stars");
+    }
 
-QSqlTableModel* createModel(const QString& table, QObject* parent)
-{
-    QSqlTableModel* model = new QSqlTableModel(parent);
-    model->setTable(table);
-    model->setEditStrategy(QSqlTableModel::OnManualSubmit);
-    model->select();
-    model->setHeaderData(0, Qt::Horizontal, "ID");
-    model->setHeaderData(1, Qt::Horizontal, "Hash");
-    model->setHeaderData(2, Qt::Horizontal, "Size");
-    model->setHeaderData(3, Qt::Horizontal, "Stars");
-    return model;
-}
+    void insert(const QString& hash, qint64 size, int stars)
+    {
+        int row = rowCount();
+        insertRows(row, 1);
+        setData(index(row, 1), hash);
+        setData(index(row, 2), size);
+        setData(index(row, 3), stars);
+    }
 
-void insert(QSqlTableModel* model, const QString& hash, qint64 size, int stars)
-{
-    int row = model->rowCount();
-    model->insertRows(row, 1);
-    model->setData(model->index(row, 1), hash);
-    model->setData(model->index(row, 2), size);
-    model->setData(model->index(row, 3), stars);
-}
-
-} // pictures
+private:
+};
 
 } // picpic

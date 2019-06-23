@@ -30,6 +30,7 @@ set(SOURCES
     mainwindow.cpp
     mainwindow.hpp
     file_scanner.hpp
+    database.hpp
 )
 
 add_executable(picpic ${SOURCES})
