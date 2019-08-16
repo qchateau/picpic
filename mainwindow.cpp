@@ -6,6 +6,7 @@
 #include <QMenuBar>
 #include <QMessageBox>
 #include <QPixmap>
+#include <QRegularExpression>
 #include <QShortcut>
 #include <QSplitter>
 #include <QSqlError>
@@ -23,8 +24,18 @@ MainWindow::MainWindow()
 {
     // File scanner
     scanner_ = new FileScanner(this);
-    connect(scanner_, &FileScanner::newFile, this, &MainWindow::onNewFile);
-    connect(scanner_, &FileScanner::done, this, &MainWindow::onScanDone);
+    connect(
+        scanner_,
+        &FileScanner::newFile,
+        this,
+        &MainWindow::onNewFile,
+        Qt::QueuedConnection);
+    connect(
+        scanner_,
+        &FileScanner::done,
+        this,
+        &MainWindow::onScanDone,
+        Qt::QueuedConnection);
 
     // UI
     createActions();
@@ -34,18 +45,29 @@ MainWindow::MainWindow()
 
 void MainWindow::onNewFile(QString path)
 {
-    if (model_) {
-        qDebug() << "New file:" << path;
+    if (!model_) {
+        return;
+    }
+
+    QRegularExpression regex{".*\\.(jpg|jpeg|png|bmp|gif)"};
+    if (regex.match(path).hasMatch()) {
+        qDebug() << "new file:" << path;
         model_->insert(path, 0);
     }
 }
 
 void MainWindow::onScanDone()
 {
-    dirs_to_scan_.pop_front();
     if (dirs_to_scan_.size() > 0) {
         scanner_->setDir(dirs_to_scan_.front());
+        dirs_to_scan_.pop_front();
         scanner_->start();
+        file_view_pg_->setHidden(false);
+        file_view_pg_->setMaximum(0);
+        file_view_pg_->setMinimum(0);
+    }
+    else {
+        file_view_pg_->setHidden(true);
     }
 }
 
@@ -85,6 +107,44 @@ void MainWindow::onOpenAction()
     createNewModel(path);
 }
 
+void MainWindow::onExportAction()
+{
+    if (file_view_->selectedIndexes().isEmpty()) {
+        QMessageBox::warning(
+            this, "No selection", "Please select pictures first");
+        return;
+    }
+
+    QString dst_dir = QFileDialog::getExistingDirectory(this, "Destination");
+    if (dst_dir.isEmpty()) {
+        return;
+    }
+
+    // TODO: async this to allow graphical feedback
+    qDebug() << "exporting to" << dst_dir;
+
+    file_view_pg_->setMinimum(0);
+    file_view_pg_->setMaximum(file_view_->selectedIndexes().size());
+    file_view_pg_->setHidden(false);
+
+    int cnt{0};
+    int copied{0};
+    for (const QModelIndex& index : file_view_->selectedIndexes()) {
+        file_view_pg_->setValue(cnt++);
+        QString src = index.siblingAtColumn(PicModel::kColPath).data().toString();
+        if (QFile::copy(src, dst_dir + '/' + QFileInfo(src).fileName())) {
+            ++copied;
+            qDebug() << "copied" << src;
+        }
+        else {
+            qDebug() << "failed to copy" << src;
+        }
+    }
+
+    qDebug() << "copied" << copied << "/" << cnt;
+    file_view_pg_->setHidden(true);
+}
+
 void MainWindow::createActions()
 {
     QMenu* file_menu = menuBar()->addMenu("&File");
@@ -107,26 +167,27 @@ void MainWindow::createActions()
     open_act->setStatusTip("Open a library");
     connect(open_act, &QAction::triggered, this, &MainWindow::onOpenAction);
 
+    QIcon save_icon = style()->standardIcon(QStyle::SP_ComputerIcon);
+    QAction* export_act = new QAction(save_icon, "&Export selection", this);
+    export_act->setShortcut(QKeySequence(Qt::CTRL + 'e'));
+    export_act->setStatusTip("Export pictures");
+    connect(export_act, &QAction::triggered, this, &MainWindow::onExportAction);
+
     file_menu->addAction(new_act);
     file_menu->addAction(open_act);
     file_menu->addAction(scan_act);
+    file_menu->addAction(export_act);
 }
 
 void MainWindow::createShortcuts()
 {
-    auto rate = [&](int rating) {
-        QModelIndex index = file_view_->selected(PicModel::kColRating);
-        if (index.model()) {
-            model_->setData(index, rating);
-        }
-        else {
-            qDebug() << "No model selected";
-        }
-    };
-
     for (int i = 0; i < 6; ++i) {
         QShortcut* shortcut = new QShortcut(QKeySequence('0' + i), this);
-        connect(shortcut, &QShortcut::activated, [=] { rate(i); });
+        connect(shortcut, &QShortcut::activated, [=] {
+            for (const QModelIndex& index : file_view_->selectedIndexes()) {
+                model_->setData(index.siblingAtColumn(PicModel::kColRating), i);
+            }
+        });
     }
 
     QShortcut* rotate = new QShortcut(Qt::Key_R, this);
@@ -135,10 +196,15 @@ void MainWindow::createShortcuts()
 
 void MainWindow::createMainWidget()
 {
+    file_view_pg_ = new QProgressBar(this);
+    file_view_pg_->setHidden(true);
+    file_view_label_ = new QLabel(this);
     file_view_ = new FileView(this);
+
     image_viewer_ = new ImageViewer(this);
     image_viewer_->setMinimumSize(800, 600);
-    file_status_ = new QLabel(this);
+    image_viewer_->setAlignment(Qt::AlignCenter);
+    image_status_ = new QLabel(this);
 
     connect(file_view_, &FileView::rowSelected, [&](const QModelIndex& index) {
         QString path =
@@ -146,15 +212,23 @@ void MainWindow::createMainWidget()
         qDebug() << "displaying" << path;
         image_viewer_->setImagePath(path);
         QFileInfo fileinfo(path);
-        file_status_->setText(fileinfo.fileName());
+        image_status_->setText(fileinfo.fileName());
     });
 
     QSplitter* central = new QSplitter(Qt::Horizontal);
-    central->addWidget(file_view_);
+
+    QVBoxLayout* llayout = new QVBoxLayout();
+    llayout->addWidget(file_view_label_);
+    llayout->addWidget(file_view_);
+    llayout->addWidget(file_view_pg_);
+
+    QWidget* lwid = new QWidget(this);
+    lwid->setLayout(llayout);
+    central->addWidget(lwid);
 
     QVBoxLayout* rlayout = new QVBoxLayout();
     rlayout->addWidget(image_viewer_);
-    rlayout->addWidget(file_status_);
+    rlayout->addWidget(image_status_);
 
     QWidget* rwid = new QWidget(this);
     rwid->setLayout(rlayout);
@@ -172,6 +246,7 @@ void MainWindow::createNewModel(const QString& path)
         model_ = nullptr;
     }
     model_ = new PicModel(db, this);
+    file_view_label_->setText("Library: " + QFileInfo(path).fileName());
 
     // Update widgets that use the model
     file_view_->setModel(model_);
@@ -180,10 +255,7 @@ void MainWindow::createNewModel(const QString& path)
 void MainWindow::startScanning(const QString& dir)
 {
     dirs_to_scan_.push_back(dir);
-    if (dirs_to_scan_.size() == 1) {
-        scanner_->setDir(dir);
-        scanner_->start();
-    }
+    onScanDone(); // restart a new scan
 }
 
 } // picpic

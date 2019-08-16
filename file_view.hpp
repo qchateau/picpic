@@ -9,7 +9,7 @@ class FileView : public QTableView {
 public:
     FileView(QWidget* parent = nullptr);
     void setModel(QAbstractItemModel* model) override;
-    QModelIndex selected(int column=0) const;
+    using QTableView::selectedIndexes;
 
 signals:
     void rowSelected(const QModelIndex& index);

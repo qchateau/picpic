@@ -25,7 +25,6 @@ protected:
         QDirIterator it(root_, QDir::Files, QDirIterator::Subdirectories);
         while (it.hasNext()) {
             QString path = it.next();
-            qDebug() << "Found" << path;
             newFile(path);
         }
         done();

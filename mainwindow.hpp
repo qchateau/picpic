@@ -4,6 +4,7 @@
 #include <QMainWindow>
 #include <QSqlTableModel>
 #include <QTableView>
+#include <QProgressBar>
 
 #include "database.hpp"
 #include "file_scanner.hpp"
@@ -24,6 +25,7 @@ private slots:
     void onScanAction();
     void onNewAction();
     void onOpenAction();
+    void onExportAction();
 
 private:
     void createActions();
@@ -34,10 +36,11 @@ private:
     void startScanning(const QString& dir);
 
     PicModel* model_{nullptr};
-    QModelIndex selection_;
     FileView* file_view_{nullptr};
-    QLabel* file_status_{nullptr};
+    QProgressBar* file_view_pg_{nullptr};
+    QLabel* file_view_label_{nullptr};
     ImageViewer* image_viewer_{nullptr};
+    QLabel* image_status_{nullptr};
     FileScanner* scanner_{nullptr};
     QVector<QString> dirs_to_scan_;
 };

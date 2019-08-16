@@ -10,7 +10,6 @@ FileView::FileView(QWidget* parent) : QTableView(parent)
     verticalHeader()->setVisible(false);
     setEditTriggers(QAbstractItemView::NoEditTriggers);
     setSelectionBehavior(QAbstractItemView::SelectRows);
-    setSelectionMode(QAbstractItemView::SingleSelection);
     setSortingEnabled(true);
 }
 
@@ -20,15 +19,8 @@ void FileView::setModel(QAbstractItemModel* model)
     horizontalHeader()->setSectionResizeMode(
         PicModel::kColPath, QHeaderView::Stretch);
     setColumnHidden(PicModel::kColId, true);
+    setTextElideMode(Qt::ElideLeft);
     sortByColumn(PicModel::kColPath);
-}
-
-QModelIndex FileView::selected(int column) const
-{
-    if (selectedIndexes().empty()) {
-        return QModelIndex();
-    }
-    return selectedIndexes().front().siblingAtColumn(column);
 }
 
 void FileView::selectionChanged(
