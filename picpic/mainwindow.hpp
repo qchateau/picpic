@@ -1,11 +1,14 @@
 #pragma once
 
+#include <QListView>
 #include <QMainWindow>
 #include <QSqlTableModel>
 #include <QTableView>
 
 #include "database.hpp"
 #include "file_scanner.hpp"
+#include "file_view.hpp"
+#include "image_viewer.hpp"
 
 namespace picpic {
 
@@ -16,22 +19,25 @@ public:
     MainWindow();
 
 private slots:
-    void onNewFile(QString hash, qint64 size);
+    void onNewFile(QString path, QString hash);
     void onScanDone();
     void onScanAction();
-    void onSaveAction();
     void onNewAction();
     void onOpenAction();
 
 private:
     void createActions();
+    void createShortcuts();
     void createMainWidget();
     void createNewModel(const QString& path);
 
     void startScanning(const QString& dir);
 
     PicModel* model_{nullptr};
-    QTableView* table_view_{nullptr};
+    QModelIndex selection_;
+    FileView* file_view_{nullptr};
+    QLabel* file_status_{nullptr};
+    ImageViewer* image_viewer_{nullptr};
     FileScanner* scanner_{nullptr};
     QVector<QString> dirs_to_scan_;
 };

@@ -12,11 +12,14 @@ namespace picpic {
 class FileScanner : public QThread {
     Q_OBJECT
 public:
+    static constexpr QCryptographicHash::Algorithm kAlgo{
+        QCryptographicHash::Sha512};
+
     FileScanner(QObject* parent = nullptr) : QThread(parent) {}
     void setDir(const QString& dir) { root_ = dir; }
 
 signals:
-    void newFile(QString hash, qint64 size);
+    void newFile(QString path, QString hash);
     void done();
 
 protected:
@@ -28,12 +31,10 @@ protected:
             if (!file.open(QIODevice::ReadOnly)) {
                 continue;
             }
-            QFileInfo info = it.fileInfo();
-            QCryptographicHash hasher(QCryptographicHash::Sha512);
+            QCryptographicHash hasher(kAlgo);
             hasher.addData(&file);
             QString hash = hasher.result().toHex();
-            qint64 size = info.size();
-            newFile(hash, size);
+            newFile(it.filePath(), hash);
         }
         done();
     }

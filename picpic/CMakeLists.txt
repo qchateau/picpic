@@ -28,9 +28,13 @@ find_package(Qt5 COMPONENTS Widgets Sql REQUIRED)
 set(SOURCES
     main.cpp
     mainwindow.cpp
+    image_viewer.cpp
+    file_view.cpp
     mainwindow.hpp
     file_scanner.hpp
     database.hpp
+    image_viewer.hpp
+    file_view.hpp
 )
 
 add_executable(picpic ${SOURCES})

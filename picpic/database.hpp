@@ -14,8 +14,8 @@ constexpr const char* kPicturesTableCreationQuery =
     "create table pictures ("
     "id integer primary key, "
     "hash varchar(128), "
-    "size bigint, "
-    "stars tinyint"
+    "path varchar(4096), "
+    "rating tinyint"
     ")";
 
 inline QSqlDatabase openPicDatabase(const QString& path)
@@ -41,24 +41,30 @@ inline QSqlDatabase openPicDatabase(const QString& path)
 class PicModel : public QSqlTableModel {
     Q_OBJECT
 public:
+    enum Columns {
+        kColId = 0,
+        kColHash,
+        kColPath,
+        kColRating,
+    };
+
     PicModel(QSqlDatabase db, QObject* parent) : QSqlTableModel(parent, db)
     {
         setTable(kPicturesTable);
-        setEditStrategy(QSqlTableModel::OnManualSubmit);
-        select();
-        setHeaderData(0, Qt::Horizontal, "ID");
-        setHeaderData(1, Qt::Horizontal, "Hash");
-        setHeaderData(2, Qt::Horizontal, "Size");
-        setHeaderData(3, Qt::Horizontal, "Stars");
+        setEditStrategy(QSqlTableModel::OnFieldChange);
+        setHeaderData(kColId, Qt::Horizontal, "ID");
+        setHeaderData(kColHash, Qt::Horizontal, "Hash");
+        setHeaderData(kColPath, Qt::Horizontal, "Path");
+        setHeaderData(kColRating, Qt::Horizontal, "Rating");
     }
 
-    void insert(const QString& hash, qint64 size, int stars)
+    void insert(const QString& path, const QString& hash, int rating)
     {
         int row = rowCount();
         insertRows(row, 1);
-        setData(index(row, 1), hash);
-        setData(index(row, 2), size);
-        setData(index(row, 3), stars);
+        setData(index(row, kColHash), hash);
+        setData(index(row, kColPath), path);
+        setData(index(row, kColRating), rating);
     }
 
 private:
