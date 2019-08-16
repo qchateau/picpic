@@ -13,7 +13,6 @@ constexpr const char* kPicturesTable = "pictures";
 constexpr const char* kPicturesTableCreationQuery =
     "create table pictures ("
     "id integer primary key, "
-    "hash varchar(128), "
     "path varchar(4096), "
     "rating tinyint"
     ")";
@@ -43,7 +42,6 @@ class PicModel : public QSqlTableModel {
 public:
     enum Columns {
         kColId = 0,
-        kColHash,
         kColPath,
         kColRating,
     };
@@ -53,16 +51,14 @@ public:
         setTable(kPicturesTable);
         setEditStrategy(QSqlTableModel::OnFieldChange);
         setHeaderData(kColId, Qt::Horizontal, "ID");
-        setHeaderData(kColHash, Qt::Horizontal, "Hash");
         setHeaderData(kColPath, Qt::Horizontal, "Path");
         setHeaderData(kColRating, Qt::Horizontal, "Rating");
     }
 
-    void insert(const QString& path, const QString& hash, int rating)
+    void insert(const QString& path, int rating=0)
     {
         int row = rowCount();
         insertRows(row, 1);
-        setData(index(row, kColHash), hash);
         setData(index(row, kColPath), path);
         setData(index(row, kColRating), rating);
     }

@@ -19,7 +19,7 @@ public:
     MainWindow();
 
 private slots:
-    void onNewFile(QString path, QString hash);
+    void onNewFile(QString path);
     void onScanDone();
     void onScanAction();
     void onNewAction();

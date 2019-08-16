@@ -32,10 +32,11 @@ MainWindow::MainWindow()
     createMainWidget();
 }
 
-void MainWindow::onNewFile(QString path, QString hash)
+void MainWindow::onNewFile(QString path)
 {
     if (model_) {
-        model_->insert(path, hash, 0);
+        qDebug() << "New file:" << path;
+        model_->insert(path, 0);
     }
 }
 
@@ -63,6 +64,9 @@ void MainWindow::onScanAction()
 void MainWindow::onNewAction()
 {
     QString path = QFileDialog::getSaveFileName(this, "New library");
+    if (path.isEmpty()) {
+        return;
+    }
     qDebug() << "new" << path;
     QFile file(path);
     if (file.exists()) {
@@ -74,6 +78,9 @@ void MainWindow::onNewAction()
 void MainWindow::onOpenAction()
 {
     QString path = QFileDialog::getOpenFileName(this, "Open library");
+    if (path.isEmpty()) {
+        return;
+    }
     qDebug() << "opening" << path;
     createNewModel(path);
 }

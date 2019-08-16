@@ -20,7 +20,6 @@ void FileView::setModel(QAbstractItemModel* model)
     horizontalHeader()->setSectionResizeMode(
         PicModel::kColPath, QHeaderView::Stretch);
     setColumnHidden(PicModel::kColId, true);
-    setColumnHidden(PicModel::kColHash, true);
     sortByColumn(PicModel::kColPath);
 }
 
