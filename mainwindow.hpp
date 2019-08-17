@@ -5,6 +5,7 @@
 #include <QSqlTableModel>
 #include <QTableView>
 #include <QProgressBar>
+#include <QSpinBox>
 
 #include "database.hpp"
 #include "file_scanner.hpp"
@@ -39,8 +40,8 @@ private:
     FileView* file_view_{nullptr};
     QProgressBar* file_view_pg_{nullptr};
     QLabel* file_view_label_{nullptr};
+    QSpinBox* filter_spin_box_{nullptr};
     ImageViewer* image_viewer_{nullptr};
-    QLabel* image_status_{nullptr};
     FileScanner* scanner_{nullptr};
     QVector<QString> dirs_to_scan_;
 };

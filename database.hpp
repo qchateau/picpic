@@ -64,6 +64,16 @@ public:
         setData(index(row, kColRating), rating);
         submitAll();
     }
+
+    QVariant data(const QModelIndex& index, int role = Qt::DisplayRole) const
+    {
+        if (index.column() == kColRating && role == Qt::TextAlignmentRole) {
+            return Qt::AlignCenter;
+        }
+        else {
+            return QSqlTableModel::data(index, role);
+        }
+    }
 };
 
 } // picpic

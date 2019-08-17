@@ -3,7 +3,6 @@
 #include <QDebug>
 #include <QFileDialog>
 #include <QLabel>
-#include <QMenuBar>
 #include <QMessageBox>
 #include <QPixmap>
 #include <QRegularExpression>
@@ -13,12 +12,19 @@
 #include <QSqlQuery>
 #include <QStyle>
 #include <QTableView>
+#include <QToolBar>
 #include <QVBoxLayout>
 
 #include "database.hpp"
 #include "file_scanner.hpp"
 
 namespace picpic {
+
+namespace {
+
+constexpr int kMaxRating = 5;
+
+} // <anonymous>
 
 MainWindow::MainWindow()
 {
@@ -147,7 +153,9 @@ void MainWindow::onExportAction()
 
 void MainWindow::createActions()
 {
-    QMenu* file_menu = menuBar()->addMenu("&File");
+    QToolBar* toolbar = addToolBar("main toolbar");
+    toolbar->setMovable(false);
+    toolbar->setFloatable(false);
 
     QIcon scan_icon = style()->standardIcon(QStyle::SP_DriveHDIcon);
     QAction* scan_act = new QAction(scan_icon, "S&can directory", this);
@@ -173,15 +181,15 @@ void MainWindow::createActions()
     export_act->setStatusTip("Export pictures");
     connect(export_act, &QAction::triggered, this, &MainWindow::onExportAction);
 
-    file_menu->addAction(new_act);
-    file_menu->addAction(open_act);
-    file_menu->addAction(scan_act);
-    file_menu->addAction(export_act);
+    toolbar->addAction(new_act);
+    toolbar->addAction(open_act);
+    toolbar->addAction(scan_act);
+    toolbar->addAction(export_act);
 }
 
 void MainWindow::createShortcuts()
 {
-    for (int i = 0; i < 6; ++i) {
+    for (int i = 0; i < kMaxRating + 1; ++i) {
         QShortcut* shortcut = new QShortcut(QKeySequence('0' + i), this);
         connect(shortcut, &QShortcut::activated, [=] {
             for (const QModelIndex& index : file_view_->selectedIndexes()) {
@@ -199,12 +207,14 @@ void MainWindow::createMainWidget()
     file_view_pg_ = new QProgressBar(this);
     file_view_pg_->setHidden(true);
     file_view_label_ = new QLabel(this);
+    filter_spin_box_ = new QSpinBox(this);
+    filter_spin_box_->setMinimum(0);
+    filter_spin_box_->setMaximum(kMaxRating);
     file_view_ = new FileView(this);
 
     image_viewer_ = new ImageViewer(this);
     image_viewer_->setMinimumSize(800, 600);
     image_viewer_->setAlignment(Qt::AlignCenter);
-    image_status_ = new QLabel(this);
 
     connect(file_view_, &FileView::rowSelected, [&](const QModelIndex& index) {
         QString path =
@@ -212,13 +222,22 @@ void MainWindow::createMainWidget()
         qDebug() << "displaying" << path;
         image_viewer_->setImagePath(path);
         QFileInfo fileinfo(path);
-        image_status_->setText(fileinfo.fileName());
     });
+
+    connect(
+        filter_spin_box_,
+        static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged),
+        [&](int value) { model_->setFilter(QString("rating>=%1").arg(value)); });
 
     QSplitter* central = new QSplitter(Qt::Horizontal);
 
     QVBoxLayout* llayout = new QVBoxLayout();
+    QHBoxLayout* top_llayout = new QHBoxLayout();
+    top_llayout->addWidget(new QLabel("Min rating:"));
+    top_llayout->addWidget(filter_spin_box_);
+
     llayout->addWidget(file_view_label_);
+    llayout->addLayout(top_llayout);
     llayout->addWidget(file_view_);
     llayout->addWidget(file_view_pg_);
 
@@ -228,7 +247,6 @@ void MainWindow::createMainWidget()
 
     QVBoxLayout* rlayout = new QVBoxLayout();
     rlayout->addWidget(image_viewer_);
-    rlayout->addWidget(image_status_);
 
     QWidget* rwid = new QWidget(this);
     rwid->setLayout(rlayout);
