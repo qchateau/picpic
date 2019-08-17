@@ -1,4 +1,5 @@
 cmake_minimum_required(VERSION 3.12)
+project(picpic VERSION 1.0.0)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_CXX_FLAGS "-Wall -Wextra -Werror -Wpedantic -std=c++17")
@@ -10,6 +11,14 @@ set(GUARDED_SOURCE_DIR ${CMAKE_BINARY_DIR}/libguarded)
 set(GUARDED_INCLUDE_DIR ${GUARDED_SOURCE_DIR}/src)
 
 find_package(Qt5 COMPONENTS Widgets Sql REQUIRED)
+
+# Resouces
+
+set(ICO
+    res/picpic.ico
+)
+
+# Build
 
 set(SOURCES
     main.cpp
@@ -36,3 +45,119 @@ target_include_directories(
     ${Qt5Sql_INCLUDE_DIRS}
     ${GUARDED_INCLUDE_DIR}
 )
+
+# Install main binary
+install(TARGETS
+    picpic
+    RUNTIME DESTINATION bin
+)
+
+# Install desktop file
+if(UNIX)
+    # TODO: create logo
+    # install(FILES
+    #     res/picpic.desktop
+    #     DESTINATION share/applications
+    # )
+    # install(FILES
+    #     res/picpic.png
+    #     DESTINATION share/${PROJECT_NAME}
+    # )
+endif()
+
+
+# Install dependencies
+if(WIN32)
+    # Install some Qt libraries
+    set(QT_REQUIRED_LIBS_TARGET_NAMES
+        Qt5::Widgets
+        Qt5::Core
+        Qt5::Gui
+        Qt5::Sql
+    )
+    foreach(target_name ${QT_REQUIRED_LIBS_TARGET_NAMES})
+        get_target_property(location ${target_name} LOCATION_Release)
+        get_filename_component(dir ${location} DIRECTORY)
+        get_filename_component(basename ${location} NAME_WE)
+        file(GLOB all_locations ${dir}/${basename}.dll*)
+
+        if(NOT all_locations)
+            message(SEND_ERROR "Not found: ${target_name}")
+        else()
+            message(STATUS "Found ${target_name}: ${all_locations}")
+        endif()
+        list(APPEND REQUIRED_LIBS_PATHS ${all_locations})
+    endforeach()
+
+    # Install required Qt plugins
+    get_filename_component(QT_ROOT ${Qt5_DIR}/../../.. ABSOLUTE)
+    set(QT_PLATFORMS ${QT_ROOT}/plugins/platforms)
+    set(QT_IMAGE_FORMATS ${QT_ROOT}/plugins/imageformats)
+
+    file(GLOB qjpeg_library "${QT_IMAGE_FORMATS}/qjpeg.dll")
+    if(NOT qjpeg_library)
+        message(SEND_ERROR "Not found: qjpeg in ${QT_IMAGE_FORMATS}")
+    else()
+        message(STATUS "Found qjpeg: ${qjpeg_library}")
+    endif()
+    install(FILES ${qjpeg_library} DESTINATION bin/imageformats)
+
+    file(GLOB qico_library "${QT_IMAGE_FORMATS}/qico.dll")
+    if(NOT qico_library)
+        message(SEND_ERROR "Not found: qico in ${QT_IMAGE_FORMATS}")
+    else()
+        message(STATUS "Found qico: ${qico_library}")
+    endif()
+    install(FILES ${qico_library} DESTINATION bin/imageformats)
+
+    file(GLOB qwindows_library "${QT_PLATFORMS}/qwindows.dll")
+    if(NOT qwindows_library)
+        message(SEND_ERROR "Not found: qwindows in ${QT_PLATFORMS}")
+    else()
+        message(STATUS "Found qjpeg: ${qwindows_library}")
+    endif()
+    install(FILES ${qwindows_library} DESTINATION bin/platforms)
+endif()
+
+
+# Package
+
+set(CPACK_PACKAGE_VERSION ${PROJECT_VERSION})
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "My own basic picture sorting software")
+set(CPACK_PACKAGE_CONTACT "Quentin Chateau (quentin.chateau@gmail.com)")
+set(CPACK_PACKAGE_FILE_NAME "${PROJECT_NAME}-${PROJECT_VERSION}")
+
+if(UNIX)
+    set(CPACK_GENERATOR "DEB")
+    set(CPACK_DEBIAN_PACKAGE_DEPENDS "libqt5core5a, libqt5gui5, libqt5widgets5")
+elseif(WIN32)
+    set(CPACK_GENERATOR "NSIS")
+
+    get_filename_component(ico_abspath ${ICO} REALPATH)
+    string(REPLACE "/" "\\\\" ico_abspath ${ico_abspath})
+
+    set(CPACK_PACKAGE_EXECUTABLES ${PROJECT_NAME} ${PROJECT_NAME})
+    set(CPACK_PACKAGE_INSTALL_REGISTRY_KEY "${PROJECT_NAME}-${PROJECT_VERSION}")
+
+    set(CPACK_NSIS_EXTRA_INSTALL_COMMANDS "
+        CreateShortCut \\\"$DESKTOP\\\\${PROJECT_NAME}.lnk\\\" \\\"$INSTDIR\\\\bin\\\\${PROJECT_NAME}.exe\\\"
+    ")
+    set(CPACK_NSIS_EXTRA_UNINSTALL_COMMANDS "
+        Delete \\\"$DESKTOP\\\\${PROJECT_NAME}.lnk\\\"
+    ")
+
+    set(CPACK_NSIS_INSTALLED_ICON_NAME "bin\\\\${PROJECT_NAME}.exe")
+    set(CPACK_NSIS_MUI_ICON ${ico_abspath})
+    set(CPACK_NSIS_MUI_UNIICON ${ico_abspath})
+    set(CPACK_NSIS_ENABLE_UNINSTALL_BEFORE_INSTALL ON)
+    set(CPACK_PACKAGE_INSTALL_DIRECTORY ${PROJECT_NAME})
+    set(CPACK_NSIS_DISPLAY_NAME ${PROJECT_NAME})
+    set(CPACK_NSIS_PACKAGE_NAME ${PROJECT_NAME})
+    set(CPACK_NSIS_URL_INFO_ABOUT "https://github.com/qchateau/picpic/")
+    set(CPACK_NSIS_HELP_LINK "https://github.com/qchateau/picpic/")
+    set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_SOURCE_DIR}/LICENSE")
+else ()
+    message(FATAL_ERROR "Unsupported system")
+endif()
+
+include(CPack)

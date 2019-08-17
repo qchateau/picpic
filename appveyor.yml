@@ -1,0 +1,65 @@
+version: 1.0.{build}
+os: Visual Studio 2017
+clone_folder: C:\projects\picpic
+test: off
+
+configuration:
+  - Release
+
+install:
+  - set QTDIR=C:\Qt\5.11.2\msvc2017_64
+  - set PATH=%PATH%;%QTDIR%\bin
+  - cd C:\projects\picpic
+
+  ############################################################################
+  # All external dependencies are installed in C:\projects\deps
+  ############################################################################
+  - mkdir C:\projects\deps
+  - cd C:\projects\deps
+
+  ############################################################################
+  # Install Ninja
+  ############################################################################
+  - set NINJA_URL="https://github.com/ninja-build/ninja/releases/download/v1.6.0/ninja-win.zip"
+  - appveyor DownloadFile %NINJA_URL% -FileName ninja.zip
+  - 7z x ninja.zip -oC:\projects\deps\ninja > nul
+  - set PATH=C:\projects\deps\ninja;%PATH%
+  - ninja --version
+
+  ############################################################################
+  # Install a recent CMake
+  ############################################################################
+  - set CMAKE_URL="https://cmake.org/files/v3.10/cmake-3.10.0-win64-x64.zip"
+  - appveyor DownloadFile %CMAKE_URL% -FileName cmake.zip
+  - 7z x cmake.zip -oC:\projects\deps > nul
+  - move C:\projects\deps\cmake-* C:\projects\deps\cmake # Move to a version-agnostic directory
+  - set PATH=C:\projects\deps\cmake\bin;%PATH%
+  - cmake --version
+
+before_build:
+  - call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvars64.bat"
+
+  - cd C:\projects\picpic
+  - md build
+  - cd build
+
+build_script:
+  - cd c:\projects\picpic\build
+  - cmake -DCMAKE_BUILD_TYPE=Release -G Ninja ../../
+  - cmake --build . --target package
+
+artifacts:
+  - path: build\autopanorama\*.exe
+    name: nsis
+
+# deploy:
+#   description: 'Automatic release from AppVeyor'
+#   provider: GitHub
+#   auth_token:
+#     secure: f/Ixlhv5ZAa/7VwNWFU76+Z9jYdPOZcj72WdGUG5O8mks8tBbOsSNi0vKCYqBaQA
+#   artifact: nsis
+#   draft: false
+#   prerelease: false
+#   on:
+#     APPVEYOR_REPO_TAG: true
+
