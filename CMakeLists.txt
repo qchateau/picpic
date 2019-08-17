@@ -18,10 +18,15 @@ find_package(Qt5 COMPONENTS Widgets Sql REQUIRED)
 
 # Resouces
 
-# TODO: create logo
 set(ICO
     res/picpic.ico
 )
+
+if(WIN32)
+    set(RC
+        res/picpic.rc
+    )
+endif()
 
 # Build
 
@@ -41,7 +46,7 @@ if (WIN32)
     set(QT_WIN32_FIX WIN32)
 endif ()
 
-add_executable(picpic ${QT_WIN32_FIX} ${SOURCES})
+add_executable(picpic ${QT_WIN32_FIX} ${SOURCES} ${RC})
 target_link_libraries(
     picpic
     Qt5::Widgets
@@ -63,15 +68,14 @@ install(TARGETS
 
 # Install desktop file
 if(UNIX)
-    # TODO: create logo
-    # install(FILES
-    #     res/picpic.desktop
-    #     DESTINATION share/applications
-    # )
-    # install(FILES
-    #     res/picpic.png
-    #     DESTINATION share/${PROJECT_NAME}
-    # )
+    install(FILES
+        res/picpic.desktop
+        DESTINATION share/applications
+    )
+    install(FILES
+        res/picpic.png
+        DESTINATION share/${PROJECT_NAME}
+    )
 endif()
 
 
@@ -167,8 +171,8 @@ elseif(WIN32)
     ")
 
     set(CPACK_NSIS_INSTALLED_ICON_NAME "bin\\\\picpic.exe")
-    #set(CPACK_NSIS_MUI_ICON ${ico_abspath})
-    #set(CPACK_NSIS_MUI_UNIICON ${ico_abspath})
+    set(CPACK_NSIS_MUI_ICON ${ico_abspath})
+    set(CPACK_NSIS_MUI_UNIICON ${ico_abspath})
     set(CPACK_NSIS_ENABLE_UNINSTALL_BEFORE_INSTALL ON)
     set(CPACK_PACKAGE_INSTALL_DIRECTORY ${PROJECT_NAME})
     set(CPACK_NSIS_DISPLAY_NAME ${PROJECT_NAME})
