@@ -91,7 +91,8 @@ void MainWindow::onScanAction()
 
 void MainWindow::onNewAction()
 {
-    QString path = QFileDialog::getSaveFileName(this, "New library");
+    QString path = QFileDialog::getSaveFileName(
+        this, "New library", "db.sqlite", "SQLite (*.sqlite);;Any (*)");
     if (path.isEmpty()) {
         return;
     }
@@ -105,7 +106,8 @@ void MainWindow::onNewAction()
 
 void MainWindow::onOpenAction()
 {
-    QString path = QFileDialog::getOpenFileName(this, "Open library");
+    QString path = QFileDialog::getOpenFileName(
+        this, "Open library", QString(), "SQLite (*.sqlite);;Any (*)");
     if (path.isEmpty()) {
         return;
     }

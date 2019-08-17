@@ -7,7 +7,7 @@ configuration:
   - Release
 
 install:
-  - set QTDIR=C:\Qt\5.11.2\msvc2017_64
+  - set QTDIR=C:\Qt\5.11.3\msvc2017_64
   - set PATH=%PATH%;%QTDIR%\bin
   - cd C:\projects\picpic
 
@@ -36,20 +36,17 @@ install:
   - set PATH=C:\projects\deps\cmake\bin;%PATH%
   - cmake --version
 
-before_build:
+build_script:
   - call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvars64.bat"
 
   - cd C:\projects\picpic
   - md build
-  - cd build
-
-build_script:
   - cd c:\projects\picpic\build
-  - cmake -DCMAKE_BUILD_TYPE=Release -G Ninja ../../
+  - cmake -DCMAKE_BUILD_TYPE=Release -G Ninja ../
   - cmake --build . --target package
 
 artifacts:
-  - path: build\autopanorama\*.exe
+  - path: build\picpic-*.exe
     name: nsis
 
 # deploy:
