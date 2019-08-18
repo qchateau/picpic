@@ -13,7 +13,7 @@ constexpr const char* kPicturesTable = "pictures";
 constexpr const char* kPicturesTableCreationQuery =
     "create table pictures ("
     "id integer primary key, "
-    "path varchar(4096), "
+    "path varchar(4096) unique, "
     "rating tinyint"
     ")";
 
@@ -62,7 +62,10 @@ public:
         insertRows(row, 1);
         setData(index(row, kColPath), path);
         setData(index(row, kColRating), rating);
-        submitAll();
+        if (!submitAll()) {
+            qDebug() << "failed to insert" << path;
+            revertAll();
+        }
     }
 
     QVariant data(const QModelIndex& index, int role = Qt::DisplayRole) const

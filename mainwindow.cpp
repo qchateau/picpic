@@ -85,8 +85,10 @@ void MainWindow::onScanAction()
         return;
     }
     QString path = QFileDialog::getExistingDirectory(this);
-    qDebug() << "scanning" << path;
-    startScanning(path);
+    if (!path.isEmpty()) {
+        qDebug() << "scanning" << path;
+        startScanning(path);
+    }
 }
 
 void MainWindow::onNewAction()
@@ -161,6 +163,7 @@ void MainWindow::createActions()
 
     QIcon scan_icon = style()->standardIcon(QStyle::SP_DriveHDIcon);
     QAction* scan_act = new QAction(scan_icon, "S&can directory", this);
+    scan_act->setShortcut(QKeySequence("Ctrl+K"));
     scan_act->setStatusTip(
         "Scan a directory and add its content to the library");
     connect(scan_act, &QAction::triggered, this, &MainWindow::onScanAction);
@@ -179,7 +182,7 @@ void MainWindow::createActions()
 
     QIcon save_icon = style()->standardIcon(QStyle::SP_ComputerIcon);
     QAction* export_act = new QAction(save_icon, "&Export selection", this);
-    export_act->setShortcut(QKeySequence(Qt::CTRL + 'e'));
+    export_act->setShortcut(QKeySequence("Ctrl+E"));
     export_act->setStatusTip("Export pictures");
     connect(export_act, &QAction::triggered, this, &MainWindow::onExportAction);
 
@@ -266,7 +269,9 @@ void MainWindow::createNewModel(const QString& path)
         model_ = nullptr;
     }
     model_ = new PicModel(db, this);
-    file_view_label_->setText("Library: " + QFileInfo(path).fileName());
+    file_view_label_->setText(
+        QString("Library: %1 - %2 files")
+            .arg(QFileInfo(path).fileName(), QString::number(model_->rowCount())));
 
     // Update widgets that use the model
     file_view_->setModel(model_);
