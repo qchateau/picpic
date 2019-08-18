@@ -197,7 +197,7 @@ void MainWindow::createShortcuts()
 {
     for (int i = 0; i < kMaxRating + 1; ++i) {
         QShortcut* shortcut = new QShortcut(QKeySequence('0' + i), this);
-        connect(shortcut, &QShortcut::activated, [=] {
+        connect(shortcut, &QShortcut::activated, [this, i] {
             for (const QModelIndex& index : file_view_->selectedIndexes()) {
                 model_->setData(index.sibling(index.row(), PicModel::kColRating), i);
             }
@@ -230,7 +230,7 @@ void MainWindow::createMainWidget()
         QFileInfo fileinfo(path);
     });
 
-    connect(file_view_, &FileView::activated, [this] (const QModelIndex& index) {
+    connect(file_view_, &FileView::activated, [] (const QModelIndex& index) {
         QString path = index.sibling(index.row(), PicModel::kColPath).data().toString();
         qDebug() << "opening" << path;
         QDesktopServices::openUrl(QUrl("file:///"+path));

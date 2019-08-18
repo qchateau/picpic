@@ -20,7 +20,7 @@ void FileView::setModel(QAbstractItemModel* model)
         PicModel::kColPath, QHeaderView::Stretch);
     setColumnHidden(PicModel::kColId, true);
     setTextElideMode(Qt::ElideLeft);
-    sortByColumn(PicModel::kColPath);
+    sortByColumn(PicModel::kColPath, Qt::AscendingOrder);
 }
 
 void FileView::selectionChanged(
