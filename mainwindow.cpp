@@ -142,7 +142,7 @@ void MainWindow::onExportAction()
     int copied{0};
     for (const QModelIndex& index : file_view_->selectedIndexes()) {
         file_view_pg_->setValue(cnt++);
-        QString src = index.siblingAtColumn(PicModel::kColPath).data().toString();
+        QString src = index.sibling(index.row(), PicModel::kColPath).data().toString();
         if (QFile::copy(src, dst_dir + '/' + QFileInfo(src).fileName())) {
             ++copied;
             qDebug() << "copied" << src;
@@ -199,7 +199,7 @@ void MainWindow::createShortcuts()
         QShortcut* shortcut = new QShortcut(QKeySequence('0' + i), this);
         connect(shortcut, &QShortcut::activated, [=] {
             for (const QModelIndex& index : file_view_->selectedIndexes()) {
-                model_->setData(index.siblingAtColumn(PicModel::kColRating), i);
+                model_->setData(index.sibling(index.row(), PicModel::kColRating), i);
             }
         });
     }
@@ -224,14 +224,14 @@ void MainWindow::createMainWidget()
 
     connect(file_view_, &FileView::rowSelected, [&](const QModelIndex& index) {
         QString path =
-            model_->data(index.siblingAtColumn(PicModel::kColPath)).toString();
+            model_->data(index.sibling(index.row(), PicModel::kColPath)).toString();
         qDebug() << "displaying" << path;
         image_viewer_->setImagePath(path);
         QFileInfo fileinfo(path);
     });
 
     connect(file_view_, &FileView::activated, [this] (const QModelIndex& index) {
-        QString path = index.siblingAtColumn(PicModel::kColPath).data().toString();
+        QString path = index.sibling(index.row(), PicModel::kColPath).data().toString();
         qDebug() << "opening" << path;
         QDesktopServices::openUrl(QUrl("file:///"+path));
     });
