@@ -14,6 +14,7 @@
 #include <QTableView>
 #include <QToolBar>
 #include <QVBoxLayout>
+#include <QDesktopServices>
 
 #include "database.hpp"
 #include "file_scanner.hpp"
@@ -227,6 +228,12 @@ void MainWindow::createMainWidget()
         qDebug() << "displaying" << path;
         image_viewer_->setImagePath(path);
         QFileInfo fileinfo(path);
+    });
+
+    connect(file_view_, &FileView::activated, [this] (const QModelIndex& index) {
+        QString path = index.siblingAtColumn(PicModel::kColPath).data().toString();
+        qDebug() << "opening" << path;
+        QDesktopServices::openUrl(QUrl("file:///"+path));
     });
 
     connect(

@@ -12,6 +12,7 @@ public:
     virtual QSize sizeHint() const override;
     virtual int heightForWidth(int width) const override;
     void rotate();
+    QString path() const;
 
 public slots:
     void setImagePath(const QString& path);
@@ -20,6 +21,7 @@ public slots:
 private:
     QPixmap scaledPixmap() const;
 
+    QString path_;
     QPixmap pixmap_;
 };
 

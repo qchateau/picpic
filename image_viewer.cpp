@@ -1,6 +1,8 @@
 #include "image_viewer.hpp"
 
 #include <QPixmap>
+#include <QImage>
+#include <QImageReader>
 
 namespace picpic {
 
@@ -31,9 +33,19 @@ void ImageViewer::rotate()
     QLabel::setPixmap(scaledPixmap());
 }
 
+QString ImageViewer::path() const
+{
+    return path_;
+}
+
 void ImageViewer::setImagePath(const QString& path)
 {
-    pixmap_ = QPixmap(path);
+    path_ = path;
+
+    QImageReader reader{path};
+    reader.setAutoTransform(true);
+    pixmap_ = QPixmap::fromImage(reader.read());
+
     QLabel::setPixmap(scaledPixmap());
 }
 
