@@ -65,7 +65,7 @@ for:
     - cmake -DCMAKE_BUILD_TYPE=Release ../
     - make -j package
   artifacts:
-    - path: build\*.deb
+    - path: build/*.deb
       name: ubuntu1804
 
 deploy:
