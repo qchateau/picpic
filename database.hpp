@@ -39,6 +39,9 @@ inline QSqlDatabase openPicDatabase(const QString& path)
 
 class PicModel : public QSqlTableModel {
     Q_OBJECT
+signals:
+    void rowsChanged();
+
 public:
     enum Columns {
         kColId = 0,
@@ -66,9 +69,18 @@ public:
             qDebug() << "failed to insert" << path;
             revertAll();
         }
+        rowsChanged();
     }
 
-    QVariant data(const QModelIndex& index, int role = Qt::DisplayRole) const
+    bool removeRows(int row, int count, const QModelIndex& parent = QModelIndex()) override
+    {
+        auto res = QSqlTableModel::removeRows(row, count, parent);
+        select();
+        rowsChanged();
+        return res;
+    }
+
+    QVariant data(const QModelIndex& index, int role = Qt::DisplayRole) const override
     {
         if (index.column() == kColRating && role == Qt::TextAlignmentRole) {
             return Qt::AlignCenter;

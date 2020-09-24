@@ -1,6 +1,7 @@
 #include "mainwindow.hpp"
 
 #include <QDebug>
+#include <QDesktopServices>
 #include <QFileDialog>
 #include <QLabel>
 #include <QMessageBox>
@@ -14,7 +15,6 @@
 #include <QTableView>
 #include <QToolBar>
 #include <QVBoxLayout>
-#include <QDesktopServices>
 
 #include "database.hpp"
 #include "file_scanner.hpp"
@@ -142,7 +142,8 @@ void MainWindow::onExportAction()
     int copied{0};
     for (const QModelIndex& index : file_view_->selectedIndexes()) {
         file_view_pg_->setValue(cnt++);
-        QString src = index.sibling(index.row(), PicModel::kColPath).data().toString();
+        QString src =
+            index.sibling(index.row(), PicModel::kColPath).data().toString();
         if (QFile::copy(src, dst_dir + '/' + QFileInfo(src).fileName())) {
             ++copied;
             qDebug() << "copied" << src;
@@ -230,10 +231,11 @@ void MainWindow::createMainWidget()
         QFileInfo fileinfo(path);
     });
 
-    connect(file_view_, &FileView::activated, [] (const QModelIndex& index) {
-        QString path = index.sibling(index.row(), PicModel::kColPath).data().toString();
+    connect(file_view_, &FileView::activated, [](const QModelIndex& index) {
+        QString path =
+            index.sibling(index.row(), PicModel::kColPath).data().toString();
         qDebug() << "opening" << path;
-        QDesktopServices::openUrl(QUrl("file:///"+path));
+        QDesktopServices::openUrl(QUrl("file:///" + path));
     });
 
     connect(
@@ -276,9 +278,16 @@ void MainWindow::createNewModel(const QString& path)
         model_ = nullptr;
     }
     model_ = new PicModel(db, this);
-    file_view_label_->setText(
-        QString("Library: %1 - %2 files")
-            .arg(QFileInfo(path).fileName(), QString::number(model_->rowCount())));
+
+    const auto update_count = [this, path]() {
+        qDebug() << "updating files count";
+        file_view_label_->setText(QString("Library: %1 - %2 files")
+                                      .arg(
+                                          QFileInfo(path).fileName(),
+                                          QString::number(model_->rowCount())));
+    };
+    update_count();
+    connect(model_, &PicModel::rowsChanged, this, update_count);
 
     // Update widgets that use the model
     file_view_->setModel(model_);

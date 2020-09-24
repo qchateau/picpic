@@ -19,6 +19,7 @@ protected:
     void selectionChanged(
         const QItemSelection& selected,
         const QItemSelection& deselected) override;
+    void keyPressEvent(QKeyEvent* event) override;
 };
 
 } // picpic
