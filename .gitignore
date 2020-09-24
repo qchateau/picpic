@@ -1,4 +1,5 @@
 build/
 .vscode/
 .history/
+.clangd/
 compile_commands.json
