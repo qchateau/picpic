@@ -280,7 +280,6 @@ void MainWindow::createNewModel(const QString& path)
     model_ = new PicModel(db, this);
 
     const auto update_count = [this, path]() {
-        qDebug() << "updating files count";
         file_view_label_->setText(QString("Library: %1 - %2 files")
                                       .arg(
                                           QFileInfo(path).fileName(),
