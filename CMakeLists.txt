@@ -33,6 +33,7 @@ endif()
 set(SOURCES
     main.cpp
     mainwindow.cpp
+    database.cpp
     image_viewer.cpp
     file_view.cpp
     mainwindow.hpp
