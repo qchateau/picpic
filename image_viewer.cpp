@@ -1,15 +1,62 @@
 #include "image_viewer.hpp"
 
-#include <QPixmap>
+#include <QDebug>
 #include <QImage>
 #include <QImageReader>
+#include <QPixmap>
 
 namespace picpic {
+
+ImageLoader::~ImageLoader()
+{
+    requestInterruption();
+    cv_.notify_all();
+    wait();
+}
+
+void ImageLoader::load(const QString& path)
+{
+    std::unique_lock lock{mutex_};
+    path_ = path;
+    cv_.notify_all();
+}
+
+void ImageLoader::run()
+{
+    qDebug() << "waiting for image to load";
+    while (!isInterruptionRequested()) {
+        QString path;
+        {
+            std::unique_lock lock{mutex_};
+            cv_.wait(lock, [this]() {
+                return path_ || isInterruptionRequested();
+            });
+
+            if (!path_) {
+                continue;
+            }
+
+            path = *path_;
+            path_.reset();
+        }
+
+        qDebug() << "loading" << path;
+        QImageReader reader{path};
+        reader.setAutoTransform(true);
+        pixmapLoaded(QPixmap::fromImage(reader.read()));
+        qDebug() << "loading" << path << "done";
+    }
+}
 
 ImageViewer::ImageViewer(QWidget* parent) : QLabel(parent)
 {
     setMinimumSize(1, 1);
     setScaledContents(false);
+    loader_.start();
+    connect(&loader_, &ImageLoader::pixmapLoaded, this, [this](QPixmap pixmap) {
+        pixmap_ = pixmap;
+        updatePixmap();
+    });
 }
 
 QSize ImageViewer::sizeHint() const
@@ -27,39 +74,31 @@ int ImageViewer::heightForWidth(int width) const
 
 void ImageViewer::rotate()
 {
-    QMatrix m;
-    m.rotate(90);
-    pixmap_ = pixmap_.transformed(m);
-    QLabel::setPixmap(scaledPixmap());
-}
-
-QString ImageViewer::path() const
-{
-    return path_;
+    if (!pixmap_.isNull()) {
+        QMatrix m;
+        m.rotate(90);
+        pixmap_ = pixmap_.transformed(m);
+    }
+    updatePixmap();
 }
 
 void ImageViewer::setImagePath(const QString& path)
 {
-    path_ = path;
-
-    QImageReader reader{path};
-    reader.setAutoTransform(true);
-    pixmap_ = QPixmap::fromImage(reader.read());
-
-    QLabel::setPixmap(scaledPixmap());
+    loader_.load(path);
 }
 
 void ImageViewer::resizeEvent(QResizeEvent*)
 {
-    if (!pixmap_.isNull()) {
-        QLabel::setPixmap(scaledPixmap());
-    }
+    updatePixmap();
 }
 
-QPixmap ImageViewer::scaledPixmap() const
+void ImageViewer::updatePixmap()
 {
-    return pixmap_.scaled(
-        this->size(), Qt::KeepAspectRatio, Qt::SmoothTransformation);
+    if (!pixmap_.isNull()) {
+        QPixmap scaled = pixmap_.scaled(
+            this->size(), Qt::KeepAspectRatio, Qt::SmoothTransformation);
+        QLabel::setPixmap(scaled);
+    }
 }
 
 } // picpic
