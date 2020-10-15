@@ -27,6 +27,7 @@ public:
     bool removeRows(int row, int count, const QModelIndex& parent = QModelIndex())
         override;
     QVariant data(const QModelIndex& index, int role = Qt::DisplayRole) const override;
+    void selectAll();
 };
 
 } // picpic

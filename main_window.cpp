@@ -254,6 +254,7 @@ void MainWindow::createNewModel(const QString& path)
 
     // Update widgets that use the model
     file_view_->setModel(model_);
+    model_->selectAll();
     updateLabel();
 }
 

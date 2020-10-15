@@ -46,7 +46,7 @@ PicModel::PicModel(QSqlDatabase db, QObject* parent)
 {
     setTable(kPicturesTable);
     setEditStrategy(QSqlTableModel::OnFieldChange);
-    select();
+    selectAll();
     setHeaderData(kColId, Qt::Horizontal, "ID");
     setHeaderData(kColPath, Qt::Horizontal, "Path");
     setHeaderData(kColRating, Qt::Horizontal, "Rating");
@@ -68,7 +68,7 @@ void PicModel::insert(const QString& path, int rating)
 bool PicModel::removeRows(int row, int count, const QModelIndex& parent)
 {
     auto res = QSqlTableModel::removeRows(row, count, parent);
-    select();
+    selectAll();
     rowsChanged();
     return res;
 }
@@ -89,6 +89,14 @@ QVariant PicModel::data(const QModelIndex& index, int role) const
     }
     else {
         return QSqlTableModel::data(index, role);
+    }
+}
+
+void PicModel::selectAll()
+{
+    select();
+    while (canFetchMore()) {
+        fetchMore();
     }
 }
 
