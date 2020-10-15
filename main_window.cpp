@@ -1,8 +1,10 @@
 #include "main_window.hpp"
 
+#include <QApplication>
 #include <QDebug>
 #include <QDesktopServices>
 #include <QFileDialog>
+#include <QKeyEvent>
 #include <QLabel>
 #include <QMessageBox>
 #include <QPixmap>
@@ -24,14 +26,45 @@ namespace {
 
 constexpr int kMaxRating = 5;
 
+class KeyListener : public QObject {
+public:
+    KeyListener(MainWindow* window) : QObject(window), window_{window} {}
+
+protected:
+    bool eventFilter(QObject*, QEvent* qevent) override
+    {
+        if (qevent->type() != QEvent::KeyPress) {
+            return false;
+        }
+        QKeyEvent* event = static_cast<QKeyEvent*>(qevent);
+        window_->keyEvent(event);
+        return true;
+    }
+
+private:
+    MainWindow* window_;
+};
+
 } // <anonymous>
 
 MainWindow::MainWindow()
 {
+    // Listen keyboard events
+    qApp->installEventFilter(new KeyListener(this));
     // UI
     createActions();
     createShortcuts();
     createMainWidget();
+}
+
+void MainWindow::keyEvent(QKeyEvent* event)
+{
+    switch (event->key()) {
+    case Qt::Key_Delete:
+        onDeleteSelection();
+        break;
+    }
+    QMainWindow::keyPressEvent(event);
 }
 
 void MainWindow::onNewFile(QString path)
@@ -123,6 +156,40 @@ void MainWindow::onExportAction()
     connect(&exporter, &Exporter::done, this, &MainWindow::onCopyDone);
 
     updateExporters();
+}
+
+void MainWindow::onDeleteSelection()
+{
+    QVector<std::size_t> rows = file_view_->selectedRows();
+    if (rows.empty()) {
+        return;
+    }
+
+    pop_up_ = new QMessageBox(
+        QMessageBox::Information,
+        "Deleting",
+        "Deleting entries, please wait ...",
+        QMessageBox::NoButton,
+        this);
+    pop_up_->open();
+    std::sort(rows.begin(), rows.end(), std::greater<std::size_t>{});
+
+    bool success = true;
+    for (std::size_t row : rows) {
+        success &= model_->removeRow(row);
+    }
+
+    model_->selectAll();
+    updateLabel();
+    pop_up_->close();
+
+    if (!success) {
+        QMessageBox::warning(
+            this,
+            "Delete error",
+            QString("Error while deleting entries: %1")
+                .arg(model_->lastError().driverText()));
+    }
 }
 
 void MainWindow::createActions()
@@ -255,8 +322,6 @@ void MainWindow::createNewModel(const QString& path)
     model_ = new PicModel(db, this);
     db_path_ = path;
 
-    connect(model_, &PicModel::rowsChanged, this, &MainWindow::updateLabel);
-
     // Update widgets that use the model
     file_view_->setModel(model_);
     model_->selectAll();
@@ -301,6 +366,7 @@ void MainWindow::onScanDone()
 
     model_->submitInserts();
     pending_scans_.pop_front();
+    updateLabel();
     updateExporters();
 }
 

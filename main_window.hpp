@@ -4,6 +4,7 @@
 
 #include <QListView>
 #include <QMainWindow>
+#include <QMessageBox>
 #include <QProgressBar>
 #include <QSpinBox>
 #include <QSqlTableModel>
@@ -22,6 +23,7 @@ class MainWindow : public QMainWindow {
 
 public:
     MainWindow();
+    void keyEvent(QKeyEvent* event);
 
 private:
     void onNewFile(QString path);
@@ -29,6 +31,7 @@ private:
     void onNewAction();
     void onOpenAction();
     void onExportAction();
+    void onDeleteSelection();
 
     void createActions();
     void createShortcuts();
@@ -42,6 +45,7 @@ private:
     void updateExportProgress(std::size_t nr_files);
     void onCopyDone(std::size_t copied);
 
+    QMessageBox* pop_up_;
     QString db_path_;
     PicModel* model_{nullptr};
     FileView* file_view_{nullptr};

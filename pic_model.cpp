@@ -65,20 +65,11 @@ bool PicModel::submitInserts()
 {
     bool success = submitAll();
     if (!success) {
-        qDebug() << "failed to insert";
+        qDebug() << "failed to insert:" << lastError().driverText();
         revertAll();
     }
     selectAll();
-    rowsChanged();
     return success;
-}
-
-bool PicModel::removeRows(int row, int count, const QModelIndex& parent)
-{
-    auto res = QSqlTableModel::removeRows(row, count, parent);
-    selectAll();
-    rowsChanged();
-    return res;
 }
 
 QVariant PicModel::data(const QModelIndex& index, int role) const
