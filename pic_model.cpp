@@ -1,5 +1,9 @@
 #include "pic_model.hpp"
 
+#include <QBrush>
+#include <QColor>
+#include <QFile>
+
 namespace picpic {
 
 namespace {
@@ -69,6 +73,15 @@ QVariant PicModel::data(const QModelIndex& index, int role) const
 {
     if (index.column() == kColRating && role == Qt::TextAlignmentRole) {
         return Qt::AlignCenter;
+    }
+    else if (role == Qt::BackgroundRole) {
+        QColor color = Qt::white;
+
+        if (!QFile{index.sibling(index.row(), kColPath).data().toString()}.exists()) {
+            color = QColor{255, 240, 240};
+        }
+
+        return QBrush(color);
     }
     else {
         return QSqlTableModel::data(index, role);

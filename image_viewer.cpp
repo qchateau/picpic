@@ -48,7 +48,10 @@ void ImageViewer::resizeEvent(QResizeEvent*)
 
 void ImageViewer::updatePixmap()
 {
-    if (!pixmap_.isNull()) {
+    if (pixmap_.isNull()) {
+        clear();
+    }
+    else {
         QPixmap scaled = pixmap_.scaled(
             this->size(), Qt::KeepAspectRatio, Qt::SmoothTransformation);
         QLabel::setPixmap(scaled);
