@@ -19,6 +19,10 @@ constexpr const char* kPicturesTableCreationQuery =
 
 QSqlDatabase openPicDatabase(const QString& path)
 {
+    if (QSqlDatabase::contains(kPicturesConnectionName)) {
+        QSqlDatabase::removeDatabase(kPicturesConnectionName);
+    }
+
     QSqlDatabase db =
         QSqlDatabase::addDatabase("QSQLITE", kPicturesConnectionName);
     db.setDatabaseName(path);

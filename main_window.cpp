@@ -242,11 +242,11 @@ void MainWindow::createMainWidget()
 void MainWindow::createNewModel(const QString& path)
 {
     // Database
-    auto db = openPicDatabase(path);
     if (model_) {
         delete model_;
         model_ = nullptr;
     }
+    auto db = openPicDatabase(path);
     model_ = new PicModel(db, this);
     db_path_ = path;
 
