@@ -26,6 +26,7 @@ namespace {
 
 constexpr int kMaxRating = 5;
 constexpr int kInsertionBatchSize = 10;
+constexpr int kDeleteBatchSize = 10;
 
 class KeyListener : public QObject {
 public:
@@ -61,6 +62,12 @@ MainWindow::MainWindow()
         &MainWindow::insertNextFile,
         this,
         &MainWindow::onInsertNextFile,
+        Qt::QueuedConnection);
+    connect(
+        this,
+        &MainWindow::deleteNext,
+        this,
+        &MainWindow::onDeleteNext,
         Qt::QueuedConnection);
 }
 
@@ -176,31 +183,49 @@ void MainWindow::onDeleteSelection()
         return;
     }
 
-    delete_modal_ = new QMessageBox(
-        QMessageBox::Information,
-        "Deleting",
-        "Deleting entries, please wait ...",
-        QMessageBox::NoButton,
-        this);
-    delete_modal_->open();
     std::sort(rows.begin(), rows.end(), std::greater<std::size_t>{});
+    pending_deletion_ = std::move(rows);
 
-    bool success = true;
-    for (std::size_t row : rows) {
+    delete_modal_ = new QProgressDialog(
+        "Deleting entries, please wait ...", "", 0, pending_deletion_.size(), this);
+    delete_modal_->setCancelButton(nullptr);
+    delete_modal_->open();
+    deleteNext();
+}
+
+void MainWindow::onDeleteNext(bool success)
+{
+    delete_modal_->setValue(delete_modal_->maximum() - pending_deletion_.size());
+
+    for (int i = 0; i < kDeleteBatchSize; ++i) {
+        if (pending_deletion_.empty()) {
+            break;
+        }
+
+        std::size_t row = pending_deletion_.front();
         success &= model_->removeRow(row);
+        pending_deletion_.pop_front();
     }
 
-    model_->selectAll();
-    updateLabel();
-    delete delete_modal_;
-    delete_modal_ = nullptr;
+    if (!pending_deletion_.empty()) {
+        deleteNext(success);
+    }
+    else {
+        model_->selectAll();
+        updateLabel();
 
-    if (!success) {
-        QMessageBox::warning(
-            this,
-            "Delete error",
-            QString("Error while deleting entries: %1")
-                .arg(model_->lastError().driverText()));
+        if (delete_modal_) {
+            delete delete_modal_;
+            delete_modal_ = nullptr;
+        }
+
+        if (!success) {
+            QMessageBox::warning(
+                this,
+                "Delete error",
+                QString("Error while deleting entries: %1")
+                    .arg(model_->lastError().driverText()));
+        }
     }
 }
 

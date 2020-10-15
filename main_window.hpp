@@ -28,6 +28,7 @@ public:
 
 signals:
     void insertNextFile();
+    void deleteNext(bool success = true);
 
 private:
     void onNewFile(const QString& path);
@@ -44,6 +45,8 @@ private:
 
     void updateLabel();
 
+    void onDeleteNext(bool success);
+
     void startNextScanner();
     void onInsertNextFile();
     void onScanDone();
@@ -56,9 +59,6 @@ private:
     PicModel* model_{nullptr};
     ImageViewer* image_viewer_{nullptr};
 
-    QMessageBox* delete_modal_{nullptr};
-    QProgressDialog* scan_modal_{nullptr};
-
     FileView* file_view_{nullptr};
     QLabel* file_view_label_{nullptr};
     QSpinBox* filter_spin_box_{nullptr};
@@ -69,6 +69,10 @@ private:
 
     std::list<Exporter> pending_exports_;
 
+    QProgressDialog* delete_modal_{nullptr};
+    QVector<std::size_t> pending_deletion_;
+
+    QProgressDialog* scan_modal_{nullptr};
     FileScanner* file_scanner_{nullptr};
     QStringList pending_files_;
 };
