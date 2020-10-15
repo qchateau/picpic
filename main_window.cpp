@@ -6,7 +6,6 @@
 #include <QLabel>
 #include <QMessageBox>
 #include <QPixmap>
-#include <QRegularExpression>
 #include <QShortcut>
 #include <QSplitter>
 #include <QSqlError>
@@ -29,21 +28,6 @@ constexpr int kMaxRating = 5;
 
 MainWindow::MainWindow()
 {
-    // File scanner
-    scanner_ = new FileScanner(this);
-    connect(
-        scanner_,
-        &FileScanner::newFile,
-        this,
-        &MainWindow::onNewFile,
-        Qt::QueuedConnection);
-    connect(
-        scanner_,
-        &FileScanner::done,
-        this,
-        &MainWindow::onScanDone,
-        Qt::QueuedConnection);
-
     // UI
     createActions();
     createShortcuts();
@@ -56,26 +40,7 @@ void MainWindow::onNewFile(QString path)
         return;
     }
 
-    QRegularExpression regex{".*\\.(jpg|jpeg|png|bmp|gif)"};
-    if (regex.match(path).hasMatch()) {
-        qDebug() << "new file:" << path;
-        model_->insert(path, 0);
-    }
-}
-
-void MainWindow::onScanDone()
-{
-    if (dirs_to_scan_.size() > 0) {
-        scanner_->setDir(dirs_to_scan_.front());
-        dirs_to_scan_.pop_front();
-        scanner_->start();
-        file_view_pg_->setHidden(false);
-        file_view_pg_->setMaximum(0);
-        file_view_pg_->setMinimum(0);
-    }
-    else {
-        file_view_pg_->setHidden(true);
-    }
+    model_->insert(path, 0);
 }
 
 void MainWindow::onScanAction()
@@ -85,11 +50,20 @@ void MainWindow::onScanAction()
             this, "No library", "Please create or open a library first");
         return;
     }
+
     QString path = QFileDialog::getExistingDirectory(this);
-    if (!path.isEmpty()) {
-        qDebug() << "scanning" << path;
-        startScanning(path);
+    if (path.isEmpty()) {
+        return;
     }
+
+    qDebug() << "scanning" << path;
+
+    pending_scans_.emplace_back(std::move(path), this);
+    const auto& scanner = pending_scans_.back();
+    connect(&scanner, &FileScanner::newFile, this, &MainWindow::onNewFile);
+    connect(&scanner, &FileScanner::done, this, &MainWindow::onScanDone);
+
+    updateScanners();
 }
 
 void MainWindow::onNewAction()
@@ -217,6 +191,8 @@ void MainWindow::createMainWidget()
     image_viewer_->setMinimumSize(800, 600);
     image_viewer_->setAlignment(Qt::AlignCenter);
 
+    connect(file_view_, &FileView::rowSelected, this, &MainWindow::updateLabel);
+
     connect(file_view_, &FileView::rowSelected, [&](const QModelIndex& index) {
         QString path =
             model_->data(index.sibling(index.row(), PicModel::kColPath)).toString();
@@ -272,24 +248,49 @@ void MainWindow::createNewModel(const QString& path)
         model_ = nullptr;
     }
     model_ = new PicModel(db, this);
+    db_path_ = path;
 
-    const auto update_count = [this, path]() {
-        file_view_label_->setText(QString("Library: %1 - %2 files")
-                                      .arg(
-                                          QFileInfo(path).fileName(),
-                                          QString::number(model_->rowCount())));
-    };
-    update_count();
-    connect(model_, &PicModel::rowsChanged, this, update_count);
+    connect(model_, &PicModel::rowsChanged, this, &MainWindow::updateLabel);
 
     // Update widgets that use the model
     file_view_->setModel(model_);
+    updateLabel();
 }
 
-void MainWindow::startScanning(const QString& dir)
+void MainWindow::updateLabel()
 {
-    dirs_to_scan_.push_back(dir);
-    onScanDone(); // restart a new scan
+    if (!model_ || !file_view_) {
+        file_view_label_->clear();
+        return;
+    }
+
+    file_view_label_->setText( //
+        QString("Library: %1 - %2 files. Selected: %3")
+            .arg(db_path_)
+            .arg(QString::number(model_->rowCount()))
+            .arg(file_view_->selectedRows().size()));
+}
+
+void MainWindow::updateScanners()
+{
+    if (pending_scans_.empty()) {
+        file_view_pg_->setHidden(true);
+    }
+    else {
+        file_view_pg_->setHidden(false);
+        file_view_pg_->setMinimum(0);
+        file_view_pg_->setMaximum(0);
+        file_view_pg_->setValue(0);
+        pending_scans_.front().start();
+    }
+}
+
+void MainWindow::onScanDone()
+{
+    assert(!pending_scans_.empty());
+
+    pending_scans_.pop_front();
+    updateExporters();
 }
 
 void MainWindow::updateExporters()
@@ -328,5 +329,6 @@ void MainWindow::onCopyDone(std::size_t copied)
 
     pending_exports_.pop_front();
     updateExporters();
+}
 
 } // picpic

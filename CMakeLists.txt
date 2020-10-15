@@ -33,6 +33,7 @@ endif()
 set(SOURCES
     main.cpp
     main_window.cpp
+    file_scanner.cpp
     pic_model.cpp
     image_viewer.cpp
     image_loader.cpp
