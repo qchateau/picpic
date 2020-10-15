@@ -151,44 +151,6 @@ void MainWindow::onExportAction()
     updateExporters();
 }
 
-void MainWindow::updateExporters()
-{
-    if (pending_exports_.empty()) {
-        file_view_pg_->setHidden(true);
-    }
-    else {
-        file_view_pg_->setHidden(false);
-        file_view_pg_->setMinimum(0);
-        file_view_pg_->setMaximum(pending_exports_.front().nrFiles());
-        file_view_pg_->setValue(0);
-        pending_exports_.front().start();
-    }
-}
-
-void MainWindow::updateExportProgress(std::size_t nr_files)
-{
-    file_view_pg_->setValue(nr_files);
-}
-
-void MainWindow::onCopyDone(std::size_t copied)
-{
-    assert(!pending_exports_.empty());
-
-    const auto& exporter = pending_exports_.front();
-    if (copied != exporter.nrFiles()) {
-        QMessageBox::warning(
-            this,
-            "Export error",
-            QString("%1/%2 have been copied to %3")
-                .arg(copied)
-                .arg(exporter.nrFiles())
-                .arg(exporter.dst()));
-    }
-
-    pending_exports_.pop_front();
-    updateExporters();
-}
-
 void MainWindow::createActions()
 {
     QToolBar* toolbar = addToolBar("main toolbar");
@@ -329,5 +291,42 @@ void MainWindow::startScanning(const QString& dir)
     dirs_to_scan_.push_back(dir);
     onScanDone(); // restart a new scan
 }
+
+void MainWindow::updateExporters()
+{
+    if (pending_exports_.empty()) {
+        file_view_pg_->setHidden(true);
+    }
+    else {
+        file_view_pg_->setHidden(false);
+        file_view_pg_->setMinimum(0);
+        file_view_pg_->setMaximum(pending_exports_.front().nrFiles());
+        file_view_pg_->setValue(0);
+        pending_exports_.front().start();
+    }
+}
+
+void MainWindow::updateExportProgress(std::size_t nr_files)
+{
+    file_view_pg_->setValue(nr_files);
+}
+
+void MainWindow::onCopyDone(std::size_t copied)
+{
+    assert(!pending_exports_.empty());
+
+    const auto& exporter = pending_exports_.front();
+    if (copied != exporter.nrFiles()) {
+        QMessageBox::warning(
+            this,
+            "Export error",
+            QString("%1/%2 have been copied to %3")
+                .arg(copied)
+                .arg(exporter.nrFiles())
+                .arg(exporter.dst()));
+    }
+
+    pending_exports_.pop_front();
+    updateExporters();
 
 } // picpic
