@@ -1,4 +1,4 @@
-#include "mainwindow.hpp"
+#include "main_window.hpp"
 
 #include <QDebug>
 #include <QDesktopServices>
@@ -16,8 +16,8 @@
 #include <QToolBar>
 #include <QVBoxLayout>
 
-#include "database.hpp"
 #include "file_scanner.hpp"
+#include "pic_model.hpp"
 
 namespace picpic {
 
@@ -120,7 +120,8 @@ void MainWindow::onOpenAction()
 
 void MainWindow::onExportAction()
 {
-    if (file_view_->selectedIndexes().isEmpty()) {
+    const auto selected_rows = file_view_->selectedRows();
+    if (selected_rows.isEmpty()) {
         QMessageBox::warning(
             this, "No selection", "Please select pictures first");
         return;
@@ -131,30 +132,61 @@ void MainWindow::onExportAction()
         return;
     }
 
-    // TODO: async this to allow graphical feedback
-    qDebug() << "exporting to" << dst_dir;
+    auto srcs = [&]() {
+        QVector<QString> srcs;
+        srcs.reserve(selected_rows.size());
+        for (std::size_t row : selected_rows) {
+            srcs.push_back(
+                model_->index(row, PicModel::kColPath).data().toString());
+        };
+        return srcs;
+    }();
+    qDebug() << "exporting" << srcs.size() << "files to" << dst_dir;
 
-    file_view_pg_->setMinimum(0);
-    file_view_pg_->setMaximum(file_view_->selectedIndexes().size());
-    file_view_pg_->setHidden(false);
+    pending_exports_.emplace_back(std::move(dst_dir), std::move(srcs), this);
+    const auto& exporter = pending_exports_.back();
+    connect(&exporter, &Exporter::progress, this, &MainWindow::updateExportProgress);
+    connect(&exporter, &Exporter::done, this, &MainWindow::onCopyDone);
 
-    int cnt{0};
-    int copied{0};
-    for (const QModelIndex& index : file_view_->selectedIndexes()) {
-        file_view_pg_->setValue(cnt++);
-        QString src =
-            index.sibling(index.row(), PicModel::kColPath).data().toString();
-        if (QFile::copy(src, dst_dir + '/' + QFileInfo(src).fileName())) {
-            ++copied;
-            qDebug() << "copied" << src;
-        }
-        else {
-            qDebug() << "failed to copy" << src;
-        }
+    updateExporters();
+}
+
+void MainWindow::updateExporters()
+{
+    if (pending_exports_.empty()) {
+        file_view_pg_->setHidden(true);
+    }
+    else {
+        file_view_pg_->setHidden(false);
+        file_view_pg_->setMinimum(0);
+        file_view_pg_->setMaximum(pending_exports_.front().nrFiles());
+        file_view_pg_->setValue(0);
+        pending_exports_.front().start();
+    }
+}
+
+void MainWindow::updateExportProgress(std::size_t nr_files)
+{
+    file_view_pg_->setValue(nr_files);
+}
+
+void MainWindow::onCopyDone(std::size_t copied)
+{
+    assert(!pending_exports_.empty());
+
+    const auto& exporter = pending_exports_.front();
+    if (copied != exporter.nrFiles()) {
+        QMessageBox::warning(
+            this,
+            "Export error",
+            QString("%1/%2 have been copied to %3")
+                .arg(copied)
+                .arg(exporter.nrFiles())
+                .arg(exporter.dst()));
     }
 
-    qDebug() << "copied" << copied << "/" << cnt;
-    file_view_pg_->setHidden(true);
+    pending_exports_.pop_front();
+    updateExporters();
 }
 
 void MainWindow::createActions()
@@ -199,8 +231,8 @@ void MainWindow::createShortcuts()
     for (int i = 0; i < kMaxRating + 1; ++i) {
         QShortcut* shortcut = new QShortcut(QKeySequence('0' + i), this);
         connect(shortcut, &QShortcut::activated, [this, i] {
-            for (const QModelIndex& index : file_view_->selectedIndexes()) {
-                model_->setData(index.sibling(index.row(), PicModel::kColRating), i);
+            for (std::size_t row : file_view_->selectedRows()) {
+                model_->setData(model_->index(row, PicModel::kColRating), i);
             }
         });
     }

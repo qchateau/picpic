@@ -1,16 +1,19 @@
 #pragma once
 
+#include <list>
+
 #include <QListView>
 #include <QMainWindow>
-#include <QSqlTableModel>
-#include <QTableView>
 #include <QProgressBar>
 #include <QSpinBox>
+#include <QSqlTableModel>
+#include <QTableView>
 
-#include "database.hpp"
+#include "exporter.hpp"
 #include "file_scanner.hpp"
 #include "file_view.hpp"
 #include "image_viewer.hpp"
+#include "pic_model.hpp"
 
 namespace picpic {
 
@@ -35,6 +38,9 @@ private:
     void createNewModel(const QString& path);
 
     void startScanning(const QString& dir);
+    void updateExporters();
+    void updateExportProgress(std::size_t nr_files);
+    void onCopyDone(std::size_t copied);
 
     PicModel* model_{nullptr};
     FileView* file_view_{nullptr};
@@ -44,6 +50,7 @@ private:
     ImageViewer* image_viewer_{nullptr};
     FileScanner* scanner_{nullptr};
     QVector<QString> dirs_to_scan_;
+    std::list<Exporter> pending_exports_;
 };
 
 } // picpic

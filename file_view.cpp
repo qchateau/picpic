@@ -1,5 +1,5 @@
 #include "file_view.hpp"
-#include "database.hpp"
+#include "pic_model.hpp"
 
 #include <QHeaderView>
 #include <QKeyEvent>
@@ -25,6 +25,17 @@ void FileView::setModel(QAbstractItemModel* model)
     setWordWrap(false);
 }
 
+QVector<std::size_t> FileView::selectedRows() const
+{
+    auto selected_rows = selectionModel()->selectedRows();
+    QVector<std::size_t> rows;
+    rows.reserve(selected_rows.size());
+    for (const auto& select : selected_rows) {
+        rows.push_back(select.row());
+    }
+    return rows;
+}
+
 void FileView::selectionChanged(
     const QItemSelection& selected,
     const QItemSelection& deselected)
@@ -42,12 +53,9 @@ void FileView::keyPressEvent(QKeyEvent* event)
     switch (event->key()) {
     case Qt::Key_Delete: {
         qDebug() << "Delete";
-        QVector<int> rows;
-        for (const auto& select : this->selectedIndexes()) {
-            rows.push_back(select.row());
-        }
+        QVector<std::size_t> rows = selectedRows();
         std::sort(rows.begin(), rows.end(), std::greater<int>{});
-        for (int row : rows) {
+        for (std::size_t row : rows) {
             model()->removeRow(row);
         }
         break;

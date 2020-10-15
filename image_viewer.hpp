@@ -1,33 +1,11 @@
 #pragma once
 
-#include <condition_variable>
-#include <mutex>
-#include <optional>
-
 #include <QLabel>
 #include <QPixmap>
-#include <QThread>
+
+#include "image_loader.hpp"
 
 namespace picpic {
-
-class ImageLoader : public QThread {
-    Q_OBJECT
-signals:
-    void pixmapLoaded(QPixmap);
-
-public:
-    using QThread::QThread;
-    ~ImageLoader() override;
-    void load(const QString& path);
-
-protected:
-    void run() override;
-
-private:
-    std::mutex mutex_;
-    std::condition_variable cv_;
-    std::optional<QString> path_;
-};
 
 class ImageViewer : public QLabel {
     Q_OBJECT
