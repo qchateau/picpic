@@ -25,6 +25,7 @@ namespace picpic {
 namespace {
 
 constexpr int kMaxRating = 5;
+constexpr int kInsertionBatchSize = 10;
 
 class KeyListener : public QObject {
 public:
@@ -37,8 +38,7 @@ protected:
             return false;
         }
         QKeyEvent* event = static_cast<QKeyEvent*>(qevent);
-        window_->keyEvent(event);
-        return true;
+        return window_->keyEvent(event);
     }
 
 private:
@@ -55,25 +55,31 @@ MainWindow::MainWindow()
     createActions();
     createShortcuts();
     createMainWidget();
+    // Connections
+    connect(
+        this,
+        &MainWindow::insertNextFile,
+        this,
+        &MainWindow::onInsertNextFile,
+        Qt::QueuedConnection);
 }
 
-void MainWindow::keyEvent(QKeyEvent* event)
+bool MainWindow::keyEvent(QKeyEvent* event)
 {
     switch (event->key()) {
     case Qt::Key_Delete:
         onDeleteSelection();
-        break;
+        return true;
     }
-    QMainWindow::keyPressEvent(event);
+    return false;
 }
 
-void MainWindow::onNewFile(QString path)
+void MainWindow::onNewFile(const QString& path)
 {
-    if (!model_) {
-        return;
+    pending_files_.push_back(path);
+    if (pending_files_.size() == 1) {
+        insertNextFile();
     }
-
-    model_->cachedInsert(path, 0);
 }
 
 void MainWindow::onScanAction()
@@ -90,13 +96,18 @@ void MainWindow::onScanAction()
     }
 
     qDebug() << "scanning" << path;
+    scan_modal_ =
+        new QProgressDialog("Scanning files, please wait ...", "", 0, 0, this);
+    scan_modal_->setCancelButton(nullptr);
+    scan_modal_->open();
 
-    pending_scans_.emplace_back(std::move(path), this);
-    const auto& scanner = pending_scans_.back();
-    connect(&scanner, &FileScanner::newFile, this, &MainWindow::onNewFile);
-    connect(&scanner, &FileScanner::done, this, &MainWindow::onScanDone);
-
-    updateScanners();
+    file_scanner_ = new FileScanner(std::move(path), this);
+    connect(file_scanner_, &FileScanner::newFile, this, &MainWindow::onNewFile);
+    connect(file_scanner_, &FileScanner::done, this, [this] {
+        delete file_scanner_;
+        file_scanner_ = nullptr;
+    });
+    file_scanner_->start();
 }
 
 void MainWindow::onNewAction()
@@ -153,7 +164,7 @@ void MainWindow::onExportAction()
     pending_exports_.emplace_back(std::move(dst_dir), std::move(srcs), this);
     const auto& exporter = pending_exports_.back();
     connect(&exporter, &Exporter::progress, this, &MainWindow::updateExportProgress);
-    connect(&exporter, &Exporter::done, this, &MainWindow::onCopyDone);
+    connect(&exporter, &Exporter::done, this, &MainWindow::onExportDone);
 
     updateExporters();
 }
@@ -165,13 +176,13 @@ void MainWindow::onDeleteSelection()
         return;
     }
 
-    pop_up_ = new QMessageBox(
+    delete_modal_ = new QMessageBox(
         QMessageBox::Information,
         "Deleting",
         "Deleting entries, please wait ...",
         QMessageBox::NoButton,
         this);
-    pop_up_->open();
+    delete_modal_->open();
     std::sort(rows.begin(), rows.end(), std::greater<std::size_t>{});
 
     bool success = true;
@@ -181,7 +192,8 @@ void MainWindow::onDeleteSelection()
 
     model_->selectAll();
     updateLabel();
-    pop_up_->close();
+    delete delete_modal_;
+    delete_modal_ = nullptr;
 
     if (!success) {
         QMessageBox::warning(
@@ -251,8 +263,8 @@ void MainWindow::createShortcuts()
 
 void MainWindow::createMainWidget()
 {
-    file_view_pg_ = new QProgressBar(this);
-    file_view_pg_->setHidden(true);
+    export_pb_ = new QProgressBar(this);
+    export_pb_->setHidden(true);
     file_view_label_ = new QLabel(this);
     filter_spin_box_ = new QSpinBox(this);
     filter_spin_box_->setMinimum(0);
@@ -295,7 +307,7 @@ void MainWindow::createMainWidget()
     llayout->addWidget(file_view_label_);
     llayout->addLayout(top_llayout);
     llayout->addWidget(file_view_);
-    llayout->addWidget(file_view_pg_);
+    llayout->addWidget(export_pb_);
 
     QWidget* lwid = new QWidget(this);
     lwid->setLayout(llayout);
@@ -346,50 +358,57 @@ void MainWindow::updateLabel()
             .arg(file_view_->selectedRows().size()));
 }
 
-void MainWindow::updateScanners()
+void MainWindow::onInsertNextFile()
 {
-    if (pending_scans_.empty()) {
-        file_view_pg_->setHidden(true);
+    if (!model_) {
+        pending_files_.clear();
+        return;
+    }
+
+    for (int i = 0; i < kInsertionBatchSize; ++i) {
+        if (pending_files_.empty()) {
+            break;
+        }
+
+        const QString& path = pending_files_.front();
+        model_->cachedInsert(path, 0);
+        pending_files_.pop_front();
+    }
+
+    if (!pending_files_.empty()) {
+        insertNextFile();
     }
     else {
-        file_view_pg_->setHidden(false);
-        file_view_pg_->setMinimum(0);
-        file_view_pg_->setMaximum(0);
-        file_view_pg_->setValue(0);
-        pending_scans_.front().start();
+        model_->submitInserts();
+        updateLabel();
+
+        if (!file_scanner_ && scan_modal_) {
+            delete scan_modal_;
+            scan_modal_ = nullptr;
+        }
     }
-}
-
-void MainWindow::onScanDone()
-{
-    assert(!pending_scans_.empty());
-
-    model_->submitInserts();
-    pending_scans_.pop_front();
-    updateLabel();
-    updateExporters();
 }
 
 void MainWindow::updateExporters()
 {
     if (pending_exports_.empty()) {
-        file_view_pg_->setHidden(true);
+        export_pb_->setHidden(true);
     }
     else {
-        file_view_pg_->setHidden(false);
-        file_view_pg_->setMinimum(0);
-        file_view_pg_->setMaximum(pending_exports_.front().nrFiles());
-        file_view_pg_->setValue(0);
+        export_pb_->setHidden(false);
+        export_pb_->setMinimum(0);
+        export_pb_->setMaximum(pending_exports_.front().nrFiles());
+        export_pb_->setValue(0);
         pending_exports_.front().start();
     }
 }
 
 void MainWindow::updateExportProgress(std::size_t nr_files)
 {
-    file_view_pg_->setValue(nr_files);
+    export_pb_->setValue(nr_files);
 }
 
-void MainWindow::onCopyDone(std::size_t copied)
+void MainWindow::onExportDone(std::size_t copied)
 {
     assert(!pending_exports_.empty());
 
