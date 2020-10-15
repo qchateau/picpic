@@ -52,8 +52,8 @@ private:
     void onScanDone();
 
     void updateExporters();
-    void updateExportProgress(std::size_t nr_files);
-    void onExportDone(std::size_t copied);
+    void updateExportProgress(int nr_files);
+    void onExportDone(int copied);
 
     QString db_path_;
     PicModel* model_{nullptr};
@@ -70,7 +70,7 @@ private:
     std::list<Exporter> pending_exports_;
 
     QProgressDialog* delete_modal_{nullptr};
-    QVector<std::size_t> pending_deletion_;
+    QList<int> pending_deletion_;
 
     QProgressDialog* scan_modal_{nullptr};
     FileScanner* file_scanner_{nullptr};

@@ -25,10 +25,10 @@ void FileView::setModel(QAbstractItemModel* model)
     setWordWrap(false);
 }
 
-QVector<std::size_t> FileView::selectedRows() const
+QVector<int> FileView::selectedRows() const
 {
     auto selected_rows = selectionModel()->selectedRows();
-    QVector<std::size_t> rows;
+    QVector<int> rows;
     rows.reserve(selected_rows.size());
     for (const auto& select : selected_rows) {
         rows.push_back(select.row());

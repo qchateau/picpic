@@ -13,7 +13,7 @@ signals:
 
 public:
     Exporter(QString dst_dir, QVector<QString> srcs, QObject* parent = nullptr);
-    std::size_t nrFiles() const { return srcs_.size(); }
+    int nrFiles() const { return srcs_.size(); }
     const QString& dst() const { return dst_dir_; }
 
 protected:

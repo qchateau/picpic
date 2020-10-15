@@ -1,5 +1,7 @@
 #include "main_window.hpp"
 
+#include <cassert>
+
 #include <QApplication>
 #include <QDebug>
 #include <QDesktopServices>
@@ -160,7 +162,7 @@ void MainWindow::onExportAction()
     auto srcs = [&]() {
         QVector<QString> srcs;
         srcs.reserve(selected_rows.size());
-        for (std::size_t row : selected_rows) {
+        for (int row : selected_rows) {
             srcs.push_back(
                 model_->index(row, PicModel::kColPath).data().toString());
         };
@@ -178,13 +180,15 @@ void MainWindow::onExportAction()
 
 void MainWindow::onDeleteSelection()
 {
-    QVector<std::size_t> rows = file_view_->selectedRows();
+    auto rows = file_view_->selectedRows();
     if (rows.empty()) {
         return;
     }
 
-    std::sort(rows.begin(), rows.end(), std::greater<std::size_t>{});
-    pending_deletion_ = std::move(rows);
+    std::sort(rows.begin(), rows.end(), std::greater<int>{});
+    pending_deletion_.clear();
+    std::copy(
+        std::begin(rows), std::end(rows), std::back_inserter(pending_deletion_));
 
     delete_modal_ = new QProgressDialog(
         "Deleting entries, please wait ...", "", 0, pending_deletion_.size(), this);
@@ -202,7 +206,7 @@ void MainWindow::onDeleteNext(bool success)
             break;
         }
 
-        std::size_t row = pending_deletion_.front();
+        int row = pending_deletion_.front();
         success &= model_->removeRow(row);
         pending_deletion_.pop_front();
     }
@@ -276,7 +280,7 @@ void MainWindow::createShortcuts()
     for (int i = 0; i < kMaxRating + 1; ++i) {
         QShortcut* shortcut = new QShortcut(QKeySequence('0' + i), this);
         connect(shortcut, &QShortcut::activated, [this, i] {
-            for (std::size_t row : file_view_->selectedRows()) {
+            for (int row : file_view_->selectedRows()) {
                 model_->setData(model_->index(row, PicModel::kColRating), i);
             }
         });
@@ -428,12 +432,12 @@ void MainWindow::updateExporters()
     }
 }
 
-void MainWindow::updateExportProgress(std::size_t nr_files)
+void MainWindow::updateExportProgress(int nr_files)
 {
     export_pb_->setValue(nr_files);
 }
 
-void MainWindow::onExportDone(std::size_t copied)
+void MainWindow::onExportDone(int copied)
 {
     assert(!pending_exports_.empty());
 
