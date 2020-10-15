@@ -3,6 +3,7 @@
 #include <QBrush>
 #include <QColor>
 #include <QFile>
+#include <QSqlRecord>
 
 namespace picpic {
 
@@ -52,17 +53,24 @@ PicModel::PicModel(QSqlDatabase db, QObject* parent)
     setHeaderData(kColRating, Qt::Horizontal, "Rating");
 }
 
-void PicModel::insert(const QString& path, int rating)
+void PicModel::cachedInsert(const QString& path, int rating)
 {
-    int row = rowCount();
-    insertRows(row, 1);
-    setData(index(row, kColPath), path);
-    setData(index(row, kColRating), rating);
-    if (!submitAll()) {
-        qDebug() << "failed to insert" << path;
+    QSqlRecord record = this->record();
+    record.setValue(kColPath, path);
+    record.setValue(kColRating, rating);
+    insertRecord(-1, record);
+}
+
+bool PicModel::submitInserts()
+{
+    bool success = submitAll();
+    if (!success) {
+        qDebug() << "failed to insert";
         revertAll();
     }
+    selectAll();
     rowsChanged();
+    return success;
 }
 
 bool PicModel::removeRows(int row, int count, const QModelIndex& parent)

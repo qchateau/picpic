@@ -40,7 +40,7 @@ void MainWindow::onNewFile(QString path)
         return;
     }
 
-    model_->insert(path, 0);
+    model_->cachedInsert(path, 0);
 }
 
 void MainWindow::onScanAction()
@@ -290,6 +290,7 @@ void MainWindow::onScanDone()
 {
     assert(!pending_scans_.empty());
 
+    model_->submitInserts();
     pending_scans_.pop_front();
     updateExporters();
 }

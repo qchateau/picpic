@@ -23,7 +23,8 @@ public:
     };
 
     PicModel(QSqlDatabase db, QObject* parent);
-    void insert(const QString& path, int rating = 0);
+    void cachedInsert(const QString& path, int rating = 0);
+    bool submitInserts();
     bool removeRows(int row, int count, const QModelIndex& parent = QModelIndex())
         override;
     QVariant data(const QModelIndex& index, int role = Qt::DisplayRole) const override;
