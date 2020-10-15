@@ -48,6 +48,8 @@ private:
     QProgressBar* file_view_pg_{nullptr};
     QLabel* file_view_label_{nullptr};
     QSpinBox* filter_spin_box_{nullptr};
+    QAction* scan_action_{nullptr};
+    QAction* export_action_{nullptr};
     ImageViewer* image_viewer_{nullptr};
     std::list<Exporter> pending_exports_;
     std::list<FileScanner> pending_scans_;

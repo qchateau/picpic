@@ -128,15 +128,9 @@ void MainWindow::onExportAction()
 void MainWindow::createActions()
 {
     QToolBar* toolbar = addToolBar("main toolbar");
+    toolbar->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
     toolbar->setMovable(false);
     toolbar->setFloatable(false);
-
-    QIcon scan_icon = style()->standardIcon(QStyle::SP_DriveHDIcon);
-    QAction* scan_act = new QAction(scan_icon, "S&can directory", this);
-    scan_act->setShortcut(QKeySequence("Ctrl+K"));
-    scan_act->setStatusTip(
-        "Scan a directory and add its content to the library");
-    connect(scan_act, &QAction::triggered, this, &MainWindow::onScanAction);
 
     QIcon new_icon = style()->standardIcon(QStyle::SP_FileIcon);
     QAction* new_act = new QAction(new_icon, "&New", this);
@@ -150,11 +144,22 @@ void MainWindow::createActions()
     open_act->setStatusTip("Open a library");
     connect(open_act, &QAction::triggered, this, &MainWindow::onOpenAction);
 
+    QIcon scan_icon = style()->standardIcon(QStyle::SP_DriveHDIcon);
+    QAction* scan_act = new QAction(scan_icon, "S&can directory", this);
+    scan_act->setShortcut(QKeySequence("Ctrl+K"));
+    scan_act->setStatusTip(
+        "Scan a directory and add its content to the library");
+    connect(scan_act, &QAction::triggered, this, &MainWindow::onScanAction);
+    scan_act->setEnabled(false);
+    scan_action_ = scan_act;
+
     QIcon save_icon = style()->standardIcon(QStyle::SP_ComputerIcon);
     QAction* export_act = new QAction(save_icon, "&Export selection", this);
     export_act->setShortcut(QKeySequence("Ctrl+E"));
     export_act->setStatusTip("Export pictures");
     connect(export_act, &QAction::triggered, this, &MainWindow::onExportAction);
+    export_act->setEnabled(false);
+    export_action_ = export_act;
 
     toolbar->addAction(new_act);
     toolbar->addAction(open_act);
@@ -256,6 +261,10 @@ void MainWindow::createNewModel(const QString& path)
     file_view_->setModel(model_);
     model_->selectAll();
     updateLabel();
+
+    // Enable buttons
+    scan_action_->setEnabled(true);
+    export_action_->setEnabled(true);
 }
 
 void MainWindow::updateLabel()
@@ -266,7 +275,7 @@ void MainWindow::updateLabel()
     }
 
     file_view_label_->setText( //
-        QString("Library: %1 - %2 files. Selected: %3")
+        QString("Library: %1 - %2 files.\nSelected: %3")
             .arg(db_path_)
             .arg(QString::number(model_->rowCount()))
             .arg(file_view_->selectedRows().size()));
