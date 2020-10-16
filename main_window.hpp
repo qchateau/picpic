@@ -15,6 +15,7 @@
 #include "file_scanner.hpp"
 #include "file_view.hpp"
 #include "image_viewer.hpp"
+#include "inserter.hpp"
 #include "pic_model.hpp"
 
 namespace picpic {
@@ -27,14 +28,12 @@ public:
     bool keyEvent(QKeyEvent* event);
 
 signals:
-    void insertNextFile();
     void deleteNext(bool success = true);
 
 private:
-    void onNewFile(const QString& path);
-    void onScanAction();
     void onNewAction();
     void onOpenAction();
+    void onScanAction();
     void onExportAction();
     void onDeleteSelection();
 
@@ -46,10 +45,6 @@ private:
     void updateLabel();
 
     void onDeleteNext(bool success);
-
-    void startNextScanner();
-    void onInsertNextFile();
-    void onScanDone();
 
     void updateExporters();
     void updateExportProgress(int nr_files);
@@ -73,8 +68,7 @@ private:
     QList<int> pending_deletion_;
 
     QProgressDialog* scan_modal_{nullptr};
-    FileScanner* file_scanner_{nullptr};
-    QStringList pending_files_;
+    Inserter* inserter_{nullptr};
 };
 
 } // picpic

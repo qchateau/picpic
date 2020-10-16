@@ -34,6 +34,7 @@ set(SOURCES
     main.cpp
     main_window.cpp
     file_scanner.cpp
+    inserter.cpp
     pic_model.cpp
     image_viewer.cpp
     image_loader.cpp
@@ -41,6 +42,7 @@ set(SOURCES
     exporter.cpp
     main_window.hpp
     file_scanner.hpp
+    inserter.hpp
     pic_model.hpp
     image_viewer.hpp
     image_loader.hpp

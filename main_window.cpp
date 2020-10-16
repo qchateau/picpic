@@ -27,7 +27,6 @@ namespace picpic {
 namespace {
 
 constexpr int kMaxRating = 5;
-constexpr int kInsertionBatchSize = 10;
 constexpr int kDeleteBatchSize = 10;
 
 class KeyListener : public QObject {
@@ -61,12 +60,6 @@ MainWindow::MainWindow()
     // Connections
     connect(
         this,
-        &MainWindow::insertNextFile,
-        this,
-        &MainWindow::onInsertNextFile,
-        Qt::QueuedConnection);
-    connect(
-        this,
         &MainWindow::deleteNext,
         this,
         &MainWindow::onDeleteNext,
@@ -81,42 +74,6 @@ bool MainWindow::keyEvent(QKeyEvent* event)
         return true;
     }
     return false;
-}
-
-void MainWindow::onNewFile(const QString& path)
-{
-    pending_files_.push_back(path);
-    if (pending_files_.size() == 1) {
-        insertNextFile();
-    }
-}
-
-void MainWindow::onScanAction()
-{
-    if (!model_) {
-        QMessageBox::warning(
-            this, "No library", "Please create or open a library first");
-        return;
-    }
-
-    QString path = QFileDialog::getExistingDirectory(this);
-    if (path.isEmpty()) {
-        return;
-    }
-
-    qDebug() << "scanning" << path;
-    scan_modal_ =
-        new QProgressDialog("Scanning files, please wait ...", "", 0, 0, this);
-    scan_modal_->setCancelButton(nullptr);
-    scan_modal_->open();
-
-    file_scanner_ = new FileScanner(std::move(path), this);
-    connect(file_scanner_, &FileScanner::newFile, this, &MainWindow::onNewFile);
-    connect(file_scanner_, &FileScanner::done, this, [this] {
-        delete file_scanner_;
-        file_scanner_ = nullptr;
-    });
-    file_scanner_->start();
 }
 
 void MainWindow::onNewAction()
@@ -143,6 +100,31 @@ void MainWindow::onOpenAction()
     }
     qDebug() << "opening" << path;
     createNewModel(path);
+}
+
+void MainWindow::onScanAction()
+{
+    if (!model_) {
+        QMessageBox::warning(
+            this, "No library", "Please create or open a library first");
+        return;
+    }
+
+    QString path = QFileDialog::getExistingDirectory(this);
+    if (path.isEmpty()) {
+        return;
+    }
+
+    qDebug() << "scanning" << path;
+    scan_modal_ =
+        new QProgressDialog("Scanning files, please wait ...", "", 0, 0, this);
+    scan_modal_->setCancelButton(nullptr);
+    scan_modal_->open();
+    inserter_ = new Inserter(model_, path, this);
+    connect(inserter_, &Inserter::done, this, [this]() {
+        delete scan_modal_;
+        scan_modal_ = nullptr;
+    });
 }
 
 void MainWindow::onExportAction()
@@ -386,37 +368,6 @@ void MainWindow::updateLabel()
             .arg(db_path_)
             .arg(QString::number(model_->rowCount()))
             .arg(file_view_->selectedRows().size()));
-}
-
-void MainWindow::onInsertNextFile()
-{
-    if (!model_) {
-        pending_files_.clear();
-        return;
-    }
-
-    for (int i = 0; i < kInsertionBatchSize; ++i) {
-        if (pending_files_.empty()) {
-            break;
-        }
-
-        const QString& path = pending_files_.front();
-        model_->cachedInsert(path, 0);
-        pending_files_.pop_front();
-    }
-
-    if (!pending_files_.empty()) {
-        insertNextFile();
-    }
-    else {
-        model_->submitInserts();
-        model_->select();
-
-        if (!file_scanner_ && scan_modal_) {
-            delete scan_modal_;
-            scan_modal_ = nullptr;
-        }
-    }
 }
 
 void MainWindow::updateExporters()
