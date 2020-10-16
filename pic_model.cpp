@@ -8,6 +8,8 @@
 namespace picpic {
 
 namespace {
+
+constexpr int kThumbnailSize = 32;
 constexpr const char* kPicturesConnectionName = "pictures";
 constexpr const char* kPicturesTable = "pictures";
 constexpr const char* kPicturesTableCreationQuery =
@@ -50,6 +52,18 @@ PicModel::PicModel(QSqlDatabase db, QObject* parent)
     setHeaderData(kColId, Qt::Horizontal, "ID");
     setHeaderData(kColPath, Qt::Horizontal, "Path");
     setHeaderData(kColRating, Qt::Horizontal, "Rating");
+
+    connect(
+        &loader_,
+        &ImageLoader::pixmapLoaded,
+        this,
+        [this](const QString& path, const QPixmap& pixmap) {
+            thumbnails_[path] = pixmap;
+            const QModelIndex& index = loading_indices_[path];
+            dataChanged(index, index, {Qt::DecorationRole});
+            loading_indices_.remove(path);
+        });
+    loader_.start();
 }
 
 bool PicModel::insert(const QString& path, int rating)
@@ -77,6 +91,22 @@ QVariant PicModel::data(const QModelIndex& index, int role) const
         }
 
         return QBrush(color);
+    }
+    else if (index.column() == kColPath && role == Qt::DecorationRole) {
+        QString path = data(index.sibling(index.row(), kColPath)).toString();
+        auto it = thumbnails_.find(path);
+        if (it != thumbnails_.end()) {
+            return *it;
+        }
+        else if (!loading_indices_.contains(path)) {
+            loading_indices_[path] = index;
+            loader_.load(path, QSize(kThumbnailSize, kThumbnailSize));
+            return QPixmap();
+        }
+        else {
+            // thumbnail is loading
+            return QPixmap();
+        }
     }
     else {
         return QSqlTableModel::data(index, role);

@@ -14,37 +14,41 @@ ImageLoader::~ImageLoader()
     wait();
 }
 
-void ImageLoader::load(const QString& path)
+void ImageLoader::load(const QString& path, QSize size)
 {
     std::unique_lock lock{mutex_};
-    path_ = path;
+    requests_.push_back(Request{path, size});
     cv_.notify_all();
 }
 
 void ImageLoader::run()
 {
-    qDebug() << "waiting for image to load";
     while (!isInterruptionRequested()) {
-        QString path;
+        Request req;
         {
             std::unique_lock lock{mutex_};
             cv_.wait(lock, [this]() {
-                return path_ || isInterruptionRequested();
+                return !requests_.empty() || isInterruptionRequested();
             });
 
-            if (!path_) {
+            if (requests_.empty()) {
                 continue;
             }
 
-            path = *path_;
-            path_.reset();
+            req = requests_.front();
+            requests_.pop_front();
         }
 
-        qDebug() << "loading" << path;
-        QImageReader reader{path};
+        qDebug() << "loading" << req.path;
+        QImageReader reader{req.path};
         reader.setAutoTransform(true);
-        pixmapLoaded(path, QPixmap::fromImage(reader.read()));
-        qDebug() << "loading" << path << "done";
+        QPixmap pixmap = QPixmap::fromImage(reader.read());
+        if (req.size.isValid()) {
+            pixmap = pixmap.scaled(
+                req.size, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+        }
+        pixmapLoaded(req.path, pixmap);
+        qDebug() << "loading" << req.path << "done";
     }
 }
 

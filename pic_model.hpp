@@ -6,6 +6,8 @@
 #include <QSqlTableModel>
 #include <QStringList>
 
+#include "image_loader.hpp"
+
 namespace picpic {
 
 QSqlDatabase openPicDatabase(const QString& path);
@@ -26,6 +28,11 @@ public:
 
 protected:
     void queryChange() override;
+
+private:
+    mutable ImageLoader loader_;
+    QMap<QString, QPixmap> thumbnails_;
+    mutable QMap<QString, QModelIndex> loading_indices_;
 };
 
 } // picpic

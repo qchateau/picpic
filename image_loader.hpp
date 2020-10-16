@@ -18,15 +18,20 @@ signals:
 public:
     using QThread::QThread;
     ~ImageLoader() override;
-    void load(const QString& path);
+    void load(const QString& path, QSize size = {});
 
 protected:
     void run() override;
 
 private:
+    struct Request {
+        QString path;
+        QSize size;
+    };
+
     std::mutex mutex_;
     std::condition_variable cv_;
-    std::optional<QString> path_;
+    QList<Request> requests_;
 };
 
 } // picpic
