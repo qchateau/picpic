@@ -290,20 +290,6 @@ void MainWindow::createMainWidget()
     image_viewer_->setMinimumSize(800, 600);
     image_viewer_->setAlignment(Qt::AlignCenter);
 
-    connect(file_view_, &FileView::rowSelected, this, &MainWindow::updateLabel);
-
-    connect(file_view_, &FileView::rowSelected, [&](const QModelIndex& index) {
-        if (!index.isValid()) {
-            image_viewer_->clear();
-            return;
-        }
-
-        QString path =
-            model_->data(index.sibling(index.row(), PicModel::kColPath)).toString();
-        qDebug() << "displaying" << path;
-        image_viewer_->setImagePath(path);
-    });
-
     connect(file_view_, &FileView::activated, [](const QModelIndex& index) {
         QString path =
             index.sibling(index.row(), PicModel::kColPath).data().toString();
@@ -354,10 +340,23 @@ void MainWindow::createNewModel(const QString& path)
 
     // Connect model
     connect(model_, &PicModel::modelReset, this, &MainWindow::updateLabel);
+    connect(model_, &PicModel::modelReset, this, &MainWindow::updateImage);
 
     // Update widgets that use the model
     file_view_->setModel(model_);
     model_->select();
+
+    // Connect slection
+    connect(
+        file_view_->selectionModel(),
+        &QItemSelectionModel::selectionChanged,
+        this,
+        &MainWindow::updateLabel);
+    connect(
+        file_view_->selectionModel(),
+        &QItemSelectionModel::selectionChanged,
+        this,
+        &MainWindow::updateImage);
 
     // Enable buttons
     scan_action_->setEnabled(true);
@@ -376,6 +375,22 @@ void MainWindow::updateLabel()
             .arg(db_path_)
             .arg(QString::number(model_->rowCount()))
             .arg(file_view_->selectedRows().size()));
+}
+
+void MainWindow::updateImage()
+{
+    auto selected = file_view_->selectedRows();
+    int row = selected.empty() ? 0 : selected.front();
+
+    QVariant data = model_->data(model_->index(row, PicModel::kColPath));
+    if (!data.isValid()) {
+        image_viewer_->clear();
+        return;
+    }
+
+    QString path = data.toString();
+    qDebug() << "displaying" << path;
+    image_viewer_->setImagePath(path);
 }
 
 } // picpic

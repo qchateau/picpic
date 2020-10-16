@@ -36,12 +36,4 @@ QVector<int> FileView::selectedRows() const
     return rows;
 }
 
-void FileView::selectionChanged(
-    const QItemSelection& selected,
-    const QItemSelection& deselected)
-{
-    QTableView::selectionChanged(selected, deselected);
-    rowSelected(selected.empty() ? QModelIndex() : selected.indexes().front());
-}
-
 } // picpic

@@ -41,6 +41,7 @@ private:
     void createNewModel(const QString& path);
 
     void updateLabel();
+    void updateImage();
 
     QString db_path_;
     PicModel* model_{nullptr};

@@ -10,14 +10,6 @@ public:
     FileView(QWidget* parent = nullptr);
     void setModel(QAbstractItemModel* model) override;
     QVector<int> selectedRows() const;
-
-signals:
-    void rowSelected(const QModelIndex& index);
-
-protected:
-    void selectionChanged(
-        const QItemSelection& selected,
-        const QItemSelection& deselected) override;
 };
 
 } // picpic
