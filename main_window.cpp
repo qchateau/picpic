@@ -187,7 +187,7 @@ void MainWindow::onDeleteSelection()
     delete_modal_->setCancelButton(nullptr);
     delete_modal_->open();
 
-    deleter_ = new Deleter(model_, std::move(rows), this);
+    deleter_ = new Deleter(model_, rows, this);
     connect(deleter_, &Deleter::progress, this, [this](int row) {
         delete_modal_->setValue(row);
     });

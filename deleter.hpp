@@ -9,7 +9,7 @@ namespace picpic {
 class Deleter : public QObject {
     Q_OBJECT
 public:
-    Deleter(PicModel* model, QVector<int> rows, QObject* parent = nullptr);
+    Deleter(PicModel* model, const QVector<int>& rows, QObject* parent = nullptr);
     void onNext();
 
 signals:
@@ -21,8 +21,8 @@ signals:
 
 private:
     PicModel* model_;
-    QVector<int> rows_;
-    QVector<int>::iterator it_;
+    QStringList ids_;
+    QStringList::iterator it_;
     bool success_{true};
 };
 
