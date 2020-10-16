@@ -33,6 +33,7 @@ private:
     void onOpenAction();
     void onScanAction();
     void onExportAction();
+    void onHelpAction();
     void onDeleteSelection();
 
     void createActions();

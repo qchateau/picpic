@@ -184,6 +184,28 @@ void MainWindow::onExportAction()
     exporter_->start();
 }
 
+void MainWindow::onHelpAction()
+{
+    QMessageBox::about(
+        this,
+        "Help",
+        "Pictures are stored in libraries. They contain the picture location "
+        "and rating and they are stored on your file system.\n"
+        "\n"
+        "1. Create or open a library.\n"
+        "2. Add pictures to your library with the \"Scan directory\" button.\n"
+        "3. Give a rating to your pictures with the '0' to '5' buttons of your "
+        "keyboard.\n"
+        "4. Select and export the pictures you want to keep with the \"Export "
+        "selection\" button.\n"
+        "\n"
+        "Shortcuts:\n"
+        "'0' to '5': rate a picture\n"
+        "'R': rotate\n"
+        "'Del': remove a picture from the library\n"
+        "'Up' and 'Down': navigate the library\n");
+}
+
 void MainWindow::onDeleteSelection()
 {
     auto rows = file_view_->selectedRows();
@@ -257,10 +279,17 @@ void MainWindow::createActions()
     export_act->setEnabled(false);
     export_action_ = export_act;
 
+    QIcon help_icon = style()->standardIcon(QStyle::SP_DialogHelpButton);
+    QAction* help_act = new QAction(help_icon, "&Help", this);
+    export_act->setShortcut(QKeySequence("Ctrl+H"));
+    export_act->setStatusTip("How to use");
+    connect(help_act, &QAction::triggered, this, &MainWindow::onHelpAction);
+
     toolbar->addAction(new_act);
     toolbar->addAction(open_act);
     toolbar->addAction(scan_act);
     toolbar->addAction(export_act);
+    toolbar->addAction(help_act);
 }
 
 void MainWindow::createShortcuts()
