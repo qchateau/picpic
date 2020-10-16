@@ -40,12 +40,8 @@ void FileView::selectionChanged(
     const QItemSelection& selected,
     const QItemSelection& deselected)
 {
-    QAbstractItemView::selectionChanged(selected, deselected);
-    if (selected.indexes().size() == 0) {
-        return;
-    }
-
-    rowSelected(selected.indexes()[0]);
+    QTableView::selectionChanged(selected, deselected);
+    rowSelected(selected.empty() ? QModelIndex() : selected.indexes().front());
 }
 
 } // picpic

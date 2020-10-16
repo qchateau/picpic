@@ -293,11 +293,15 @@ void MainWindow::createMainWidget()
     connect(file_view_, &FileView::rowSelected, this, &MainWindow::updateLabel);
 
     connect(file_view_, &FileView::rowSelected, [&](const QModelIndex& index) {
+        if (!index.isValid()) {
+            image_viewer_->clear();
+            return;
+        }
+
         QString path =
             model_->data(index.sibling(index.row(), PicModel::kColPath)).toString();
         qDebug() << "displaying" << path;
         image_viewer_->setImagePath(path);
-        QFileInfo fileinfo(path);
     });
 
     connect(file_view_, &FileView::activated, [](const QModelIndex& index) {
