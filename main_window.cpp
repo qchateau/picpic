@@ -27,7 +27,6 @@ namespace picpic {
 namespace {
 
 constexpr int kMaxRating = 5;
-constexpr int kDeleteBatchSize = 10;
 
 class KeyListener : public QObject {
 public:
@@ -57,13 +56,6 @@ MainWindow::MainWindow()
     createActions();
     createShortcuts();
     createMainWidget();
-    // Connections
-    connect(
-        this,
-        &MainWindow::deleteNext,
-        this,
-        &MainWindow::onDeleteNext,
-        Qt::QueuedConnection);
 }
 
 bool MainWindow::keyEvent(QKeyEvent* event)
@@ -124,6 +116,9 @@ void MainWindow::onScanAction()
     connect(inserter_, &Inserter::done, this, [this]() {
         delete scan_modal_;
         scan_modal_ = nullptr;
+
+        inserter_->deleteLater();
+        inserter_ = nullptr;
     });
 }
 
@@ -152,12 +147,32 @@ void MainWindow::onExportAction()
     }();
     qDebug() << "exporting" << srcs.size() << "files to" << dst_dir;
 
-    pending_exports_.emplace_back(std::move(dst_dir), std::move(srcs), this);
-    const auto& exporter = pending_exports_.back();
-    connect(&exporter, &Exporter::progress, this, &MainWindow::updateExportProgress);
-    connect(&exporter, &Exporter::done, this, &MainWindow::onExportDone);
+    export_modal_ = new QProgressDialog(
+        "Exporting files, please wait ...", "", 0, srcs.size(), this);
+    export_modal_->setCancelButton(nullptr);
+    export_modal_->open();
+    exporter_ = new Exporter(std::move(dst_dir), std::move(srcs), this);
+    connect(exporter_, &Exporter::progress, this, [this](int nr_files) {
+        export_modal_->setValue(nr_files);
+    });
+    connect(exporter_, &Exporter::done, this, [this](int copied) {
+        delete export_modal_;
+        export_modal_ = nullptr;
 
-    updateExporters();
+        if (copied != exporter_->nrFiles()) {
+            QMessageBox::warning(
+                this,
+                "Export error",
+                QString("%1/%2 have been copied to %3")
+                    .arg(copied)
+                    .arg(exporter_->nrFiles())
+                    .arg(exporter_->dst()));
+        }
+
+        exporter_->deleteLater();
+        exporter_ = nullptr;
+    });
+    exporter_->start();
 }
 
 void MainWindow::onDeleteSelection()
@@ -167,42 +182,20 @@ void MainWindow::onDeleteSelection()
         return;
     }
 
-    std::sort(rows.begin(), rows.end(), std::greater<int>{});
-    pending_deletion_.clear();
-    std::copy(
-        std::begin(rows), std::end(rows), std::back_inserter(pending_deletion_));
-
     delete_modal_ = new QProgressDialog(
-        "Deleting entries, please wait ...", "", 0, pending_deletion_.size(), this);
+        "Deleting entries, please wait ...", "", 0, rows.size(), this);
     delete_modal_->setCancelButton(nullptr);
     delete_modal_->open();
-    deleteNext();
-}
 
-void MainWindow::onDeleteNext(bool success)
-{
-    delete_modal_->setValue(delete_modal_->maximum() - pending_deletion_.size());
-
-    for (int i = 0; i < kDeleteBatchSize; ++i) {
-        if (pending_deletion_.empty()) {
-            break;
-        }
-
-        int row = pending_deletion_.front();
-        success &= model_->removeRow(row);
-        pending_deletion_.pop_front();
-    }
-
-    if (!pending_deletion_.empty()) {
-        deleteNext(success);
-    }
-    else {
+    deleter_ = new Deleter(model_, std::move(rows), this);
+    connect(deleter_, &Deleter::progress, this, [this](int row) {
+        delete_modal_->setValue(row);
+    });
+    connect(deleter_, &Deleter::done, this, [this](bool success) {
         model_->select();
 
-        if (delete_modal_) {
-            delete delete_modal_;
-            delete_modal_ = nullptr;
-        }
+        delete delete_modal_;
+        delete_modal_ = nullptr;
 
         if (!success) {
             QMessageBox::warning(
@@ -211,7 +204,10 @@ void MainWindow::onDeleteNext(bool success)
                 QString("Error while deleting entries: %1")
                     .arg(model_->lastError().driverText()));
         }
-    }
+
+        deleter_->deleteLater();
+        deleter_ = nullptr;
+    });
 }
 
 void MainWindow::createActions()
@@ -273,8 +269,6 @@ void MainWindow::createShortcuts()
 
 void MainWindow::createMainWidget()
 {
-    export_pb_ = new QProgressBar(this);
-    export_pb_->setHidden(true);
     file_view_label_ = new QLabel(this);
     filter_spin_box_ = new QSpinBox(this);
     filter_spin_box_->setMinimum(0);
@@ -317,7 +311,6 @@ void MainWindow::createMainWidget()
     llayout->addWidget(file_view_label_);
     llayout->addLayout(top_llayout);
     llayout->addWidget(file_view_);
-    llayout->addWidget(export_pb_);
 
     QWidget* lwid = new QWidget(this);
     lwid->setLayout(llayout);
@@ -368,44 +361,6 @@ void MainWindow::updateLabel()
             .arg(db_path_)
             .arg(QString::number(model_->rowCount()))
             .arg(file_view_->selectedRows().size()));
-}
-
-void MainWindow::updateExporters()
-{
-    if (pending_exports_.empty()) {
-        export_pb_->setHidden(true);
-    }
-    else {
-        export_pb_->setHidden(false);
-        export_pb_->setMinimum(0);
-        export_pb_->setMaximum(pending_exports_.front().nrFiles());
-        export_pb_->setValue(0);
-        pending_exports_.front().start();
-    }
-}
-
-void MainWindow::updateExportProgress(int nr_files)
-{
-    export_pb_->setValue(nr_files);
-}
-
-void MainWindow::onExportDone(int copied)
-{
-    assert(!pending_exports_.empty());
-
-    const auto& exporter = pending_exports_.front();
-    if (copied != exporter.nrFiles()) {
-        QMessageBox::warning(
-            this,
-            "Export error",
-            QString("%1/%2 have been copied to %3")
-                .arg(copied)
-                .arg(exporter.nrFiles())
-                .arg(exporter.dst()));
-    }
-
-    pending_exports_.pop_front();
-    updateExporters();
 }
 
 } // picpic

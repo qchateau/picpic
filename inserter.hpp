@@ -11,11 +11,13 @@ class Inserter : public QObject {
     Q_OBJECT
 public:
     Inserter(PicModel* model, const QString& path, QObject* parent = nullptr);
-    void onInsertNextFile();
+    void onNext();
 
 signals:
     void done();
-    void insertNextFile();
+
+    // private signal
+    void next();
 
 private:
     PicModel* model_;

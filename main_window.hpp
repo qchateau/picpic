@@ -11,6 +11,7 @@
 #include <QSqlTableModel>
 #include <QTableView>
 
+#include "deleter.hpp"
 #include "exporter.hpp"
 #include "file_scanner.hpp"
 #include "file_view.hpp"
@@ -27,9 +28,6 @@ public:
     MainWindow();
     bool keyEvent(QKeyEvent* event);
 
-signals:
-    void deleteNext(bool success = true);
-
 private:
     void onNewAction();
     void onOpenAction();
@@ -44,12 +42,6 @@ private:
 
     void updateLabel();
 
-    void onDeleteNext(bool success);
-
-    void updateExporters();
-    void updateExportProgress(int nr_files);
-    void onExportDone(int copied);
-
     QString db_path_;
     PicModel* model_{nullptr};
     ImageViewer* image_viewer_{nullptr};
@@ -57,15 +49,15 @@ private:
     FileView* file_view_{nullptr};
     QLabel* file_view_label_{nullptr};
     QSpinBox* filter_spin_box_{nullptr};
-    QProgressBar* export_pb_{nullptr};
 
     QAction* scan_action_{nullptr};
     QAction* export_action_{nullptr};
 
-    std::list<Exporter> pending_exports_;
+    QProgressDialog* export_modal_{nullptr};
+    Exporter* exporter_{nullptr};
 
     QProgressDialog* delete_modal_{nullptr};
-    QList<int> pending_deletion_;
+    Deleter* deleter_{nullptr};
 
     QProgressDialog* scan_modal_{nullptr};
     Inserter* inserter_{nullptr};

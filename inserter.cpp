@@ -12,20 +12,15 @@ Inserter::Inserter(PicModel* model, const QString& path, QObject* parent)
     connect(&file_scanner_, &FileScanner::newFile, this, [this](const QString& path) {
         pending_files_.push_back(path);
         if (pending_files_.size() == 1) {
-            insertNextFile();
+            next();
         }
     });
     connect(&file_scanner_, &FileScanner::done, this, [this] { done_ = true; });
-    connect(
-        this,
-        &Inserter::insertNextFile,
-        this,
-        &Inserter::onInsertNextFile,
-        Qt::QueuedConnection);
+    connect(this, &Inserter::next, this, &Inserter::onNext, Qt::QueuedConnection);
     file_scanner_.start();
 }
 
-void Inserter::onInsertNextFile()
+void Inserter::onNext()
 {
     for (int i = 0; i < kBatchSize; ++i) {
         if (pending_files_.empty()) {
@@ -38,7 +33,7 @@ void Inserter::onInsertNextFile()
     }
 
     if (!pending_files_.empty()) {
-        insertNextFile();
+        next();
         return;
     }
 
