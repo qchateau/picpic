@@ -14,7 +14,7 @@ public:
     void onNext();
 
 signals:
-    void done();
+    void done(bool success);
 
     // private signal
     void next();
@@ -24,6 +24,7 @@ private:
     FileScanner file_scanner_;
     QStringList pending_files_;
     bool done_{false};
+    bool success_{true};
 };
 
 } // picpic

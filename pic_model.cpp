@@ -54,6 +54,10 @@ PicModel::PicModel(QSqlDatabase db, QObject* parent)
 
 bool PicModel::insert(const QString& path, int rating)
 {
+    if (!match(index(0, kColPath), Qt::DisplayRole, path).empty()) {
+        return true;
+    }
+
     QSqlRecord record = this->record();
     record.setValue(kColRating, rating);
     record.setValue(kColPath, path);

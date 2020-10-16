@@ -113,11 +113,18 @@ void MainWindow::onScanAction()
     scan_modal_->setCancelButton(nullptr);
     scan_modal_->open();
     inserter_ = new Inserter(model_, path, this);
-    connect(inserter_, &Inserter::done, this, [this]() {
+    connect(inserter_, &Inserter::done, this, [this](bool success) {
         model_->select();
 
         delete scan_modal_;
         scan_modal_ = nullptr;
+
+        if (!success) {
+            QMessageBox::warning(
+                this,
+                "Scan error",
+                "Some files have been detected but could not be added");
+        }
 
         inserter_->deleteLater();
         inserter_ = nullptr;
@@ -204,7 +211,7 @@ void MainWindow::onDeleteSelection()
                 this,
                 "Delete error",
                 QString("Error while deleting entries: %1")
-                    .arg(model_->lastError().driverText()));
+                    .arg(model_->lastError().text()));
         }
 
         deleter_->deleteLater();
