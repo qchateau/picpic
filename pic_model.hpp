@@ -20,8 +20,8 @@ public:
     };
 
     PicModel(QSqlDatabase db, QObject* parent);
-    void cachedInsert(const QString& path, int rating = 0);
-    bool submitInserts();
+
+    bool insert(const QString& path, int rating = 0);
     QVariant data(const QModelIndex& index, int role = Qt::DisplayRole) const override;
 
 protected:

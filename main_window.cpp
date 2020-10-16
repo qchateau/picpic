@@ -114,6 +114,8 @@ void MainWindow::onScanAction()
     scan_modal_->open();
     inserter_ = new Inserter(model_, path, this);
     connect(inserter_, &Inserter::done, this, [this]() {
+        model_->select();
+
         delete scan_modal_;
         scan_modal_ = nullptr;
 

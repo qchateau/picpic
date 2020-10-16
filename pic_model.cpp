@@ -52,22 +52,12 @@ PicModel::PicModel(QSqlDatabase db, QObject* parent)
     setHeaderData(kColRating, Qt::Horizontal, "Rating");
 }
 
-void PicModel::cachedInsert(const QString& path, int rating)
+bool PicModel::insert(const QString& path, int rating)
 {
     QSqlRecord record = this->record();
-    record.setValue(kColPath, path);
     record.setValue(kColRating, rating);
-    insertRecord(-1, record);
-}
-
-bool PicModel::submitInserts()
-{
-    bool success = submitAll();
-    if (!success) {
-        qDebug() << "failed to insert:" << lastError().driverText();
-        revertAll();
-    }
-    return success;
+    record.setValue(kColPath, path);
+    return insertRecord(-1, record);
 }
 
 QVariant PicModel::data(const QModelIndex& index, int role) const

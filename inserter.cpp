@@ -1,9 +1,12 @@
 #include "inserter.hpp"
 
+#include <QDebug>
+
 namespace picpic {
 namespace {
 
 constexpr int kBatchSize = 10;
+
 }
 
 Inserter::Inserter(PicModel* model, const QString& path, QObject* parent)
@@ -22,27 +25,23 @@ Inserter::Inserter(PicModel* model, const QString& path, QObject* parent)
 
 void Inserter::onNext()
 {
-    for (int i = 0; i < kBatchSize; ++i) {
-        if (pending_files_.empty()) {
-            break;
-        }
-
-        const QString& path = pending_files_.front();
-        model_->cachedInsert(path, 0);
-        pending_files_.pop_front();
-    }
-
-    if (!pending_files_.empty()) {
-        next();
+    if (pending_files_.empty() && done_) {
+        done();
         return;
     }
 
-    model_->submitInserts();
-    model_->select();
+    auto begin = pending_files_.begin();
+    auto end = std::min(begin + kBatchSize, pending_files_.end());
 
-    if (done_) {
-        done();
+    for (auto it = begin; it != end; ++it) {
+        if (!model_->insert(*it)) {
+            qDebug() << "insertion failed:" << model_->lastError().driverText();
+        }
     }
+
+    model_->select();
+    pending_files_.erase(begin, end);
+    next();
 }
 
 } // picpic
