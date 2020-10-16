@@ -215,8 +215,7 @@ void MainWindow::onDeleteNext(bool success)
         deleteNext(success);
     }
     else {
-        model_->selectAll();
-        updateLabel();
+        model_->select();
 
         if (delete_modal_) {
             delete delete_modal_;
@@ -363,10 +362,12 @@ void MainWindow::createNewModel(const QString& path)
     model_ = new PicModel(db, this);
     db_path_ = path;
 
+    // Connect model
+    connect(model_, &PicModel::modelReset, this, &MainWindow::updateLabel);
+
     // Update widgets that use the model
     file_view_->setModel(model_);
-    model_->selectAll();
-    updateLabel();
+    model_->select();
 
     // Enable buttons
     scan_action_->setEnabled(true);
@@ -409,7 +410,7 @@ void MainWindow::onInsertNextFile()
     }
     else {
         model_->submitInserts();
-        updateLabel();
+        model_->select();
 
         if (!file_scanner_ && scan_modal_) {
             delete scan_modal_;

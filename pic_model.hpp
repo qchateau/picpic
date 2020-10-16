@@ -23,7 +23,9 @@ public:
     void cachedInsert(const QString& path, int rating = 0);
     bool submitInserts();
     QVariant data(const QModelIndex& index, int role = Qt::DisplayRole) const override;
-    void selectAll();
+
+protected:
+    void queryChange() override;
 };
 
 } // picpic

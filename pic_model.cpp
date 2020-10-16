@@ -47,7 +47,6 @@ PicModel::PicModel(QSqlDatabase db, QObject* parent)
 {
     setTable(kPicturesTable);
     setEditStrategy(QSqlTableModel::OnFieldChange);
-    selectAll();
     setHeaderData(kColId, Qt::Horizontal, "ID");
     setHeaderData(kColPath, Qt::Horizontal, "Path");
     setHeaderData(kColRating, Qt::Horizontal, "Rating");
@@ -68,7 +67,6 @@ bool PicModel::submitInserts()
         qDebug() << "failed to insert:" << lastError().driverText();
         revertAll();
     }
-    selectAll();
     return success;
 }
 
@@ -91,9 +89,8 @@ QVariant PicModel::data(const QModelIndex& index, int role) const
     }
 }
 
-void PicModel::selectAll()
+void PicModel::queryChange()
 {
-    select();
     while (canFetchMore()) {
         fetchMore();
     }
