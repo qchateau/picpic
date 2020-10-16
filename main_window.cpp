@@ -221,6 +221,8 @@ void MainWindow::onDeleteSelection()
 
 void MainWindow::createActions()
 {
+    setContextMenuPolicy(Qt::NoContextMenu);
+
     QToolBar* toolbar = addToolBar("main toolbar");
     toolbar->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
     toolbar->setMovable(false);
