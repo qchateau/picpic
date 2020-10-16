@@ -1,16 +1,27 @@
 #include "image_viewer.hpp"
 
 namespace picpic {
+namespace {
 
-ImageViewer::ImageViewer(QWidget* parent) : QLabel(parent)
+constexpr int kCachedPictured = 5;
+
+}
+
+ImageViewer::ImageViewer(QWidget* parent)
+    : QLabel(parent), pixmap_cache_(kCachedPictured)
 {
     setMinimumSize(1, 1);
     setScaledContents(false);
     loader_.start();
-    connect(&loader_, &ImageLoader::pixmapLoaded, this, [this](QPixmap pixmap) {
-        pixmap_ = pixmap;
-        updatePixmap();
-    });
+    connect(
+        &loader_,
+        &ImageLoader::pixmapLoaded,
+        this,
+        [this](const QString& path, const QPixmap& pixmap) {
+            pixmap_cache_.insert(path, new QPixmap(pixmap));
+            pixmap_ = pixmap;
+            updatePixmap();
+        });
 }
 
 QSize ImageViewer::sizeHint() const
@@ -38,6 +49,13 @@ void ImageViewer::rotate()
 
 void ImageViewer::setImagePath(const QString& path)
 {
+    QPixmap* cached = pixmap_cache_[path];
+    if (cached) {
+        pixmap_ = *cached;
+        updatePixmap();
+        return;
+    }
+
     loader_.load(path);
 }
 

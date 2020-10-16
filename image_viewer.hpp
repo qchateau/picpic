@@ -1,5 +1,6 @@
 #pragma once
 
+#include <QCache>
 #include <QLabel>
 #include <QPixmap>
 
@@ -21,6 +22,7 @@ private:
     void updatePixmap();
 
     QPixmap pixmap_;
+    QCache<QString, QPixmap> pixmap_cache_;
     ImageLoader loader_;
 };
 

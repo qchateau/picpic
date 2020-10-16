@@ -13,7 +13,7 @@ namespace picpic {
 class ImageLoader : public QThread {
     Q_OBJECT
 signals:
-    void pixmapLoaded(QPixmap);
+    void pixmapLoaded(QString path, QPixmap pixmap);
 
 public:
     using QThread::QThread;

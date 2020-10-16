@@ -43,7 +43,7 @@ void ImageLoader::run()
         qDebug() << "loading" << path;
         QImageReader reader{path};
         reader.setAutoTransform(true);
-        pixmapLoaded(QPixmap::fromImage(reader.read()));
+        pixmapLoaded(path, QPixmap::fromImage(reader.read()));
         qDebug() << "loading" << path << "done";
     }
 }
