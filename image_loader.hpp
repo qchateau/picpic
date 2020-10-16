@@ -16,10 +16,9 @@ signals:
     void pixmapLoaded(QString path, QPixmap pixmap);
 
 public:
-    using QThread::QThread;
+    ImageLoader(int size = -1, QObject* parent = nullptr);
     ~ImageLoader() override;
 
-    void cancel();
     void load(const QString& path, QSize size = {});
 
 protected:
@@ -34,6 +33,7 @@ private:
     std::mutex mutex_;
     std::condition_variable cv_;
     QList<Request> requests_;
+    int size_;
 };
 
 } // picpic

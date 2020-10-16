@@ -8,11 +8,14 @@ constexpr int kCachedPictured = 5;
 }
 
 ImageViewer::ImageViewer(QWidget* parent)
-    : QLabel(parent), pixmap_cache_(kCachedPictured)
+    : QLabel(parent),
+      pixmap_cache_(kCachedPictured),
+      loader_(1),
+      preloader_(kCachedPictured)
 {
     setMinimumSize(1, 1);
     setScaledContents(false);
-    loader_.start();
+
     connect(
         &loader_,
         &ImageLoader::pixmapLoaded,
@@ -22,6 +25,17 @@ ImageViewer::ImageViewer(QWidget* parent)
             pixmap_ = pixmap;
             updatePixmap();
         });
+
+    connect(
+        &preloader_,
+        &ImageLoader::pixmapLoaded,
+        this,
+        [this](const QString& path, const QPixmap& pixmap) {
+            pixmap_cache_.insert(path, new QPixmap(pixmap));
+        });
+
+    loader_.start();
+    preloader_.start();
 }
 
 QSize ImageViewer::sizeHint() const
@@ -57,8 +71,16 @@ void ImageViewer::setImagePath(const QString& path)
     }
 
     setEnabled(false);
-    loader_.cancel();
     loader_.load(path);
+}
+
+void ImageViewer::preload(const QString& path)
+{
+    if (pixmap_cache_[path]) {
+        return;
+    }
+
+    preloader_.load(path);
 }
 
 void ImageViewer::resizeEvent(QResizeEvent*)

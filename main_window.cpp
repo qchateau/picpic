@@ -391,6 +391,20 @@ void MainWindow::updateImage()
     QString path = data.toString();
     qDebug() << "displaying" << path;
     image_viewer_->setImagePath(path);
+
+    QVector<QVariant> neighbours;
+    neighbours.push_back(model_->data(model_->index(row + 1, PicModel::kColPath)));
+    neighbours.push_back(model_->data(model_->index(row - 1, PicModel::kColPath)));
+
+    for (const auto& neighbour : neighbours) {
+        if (!neighbour.isValid()) {
+            continue;
+        }
+
+        QString path = neighbour.toString();
+        qDebug() << "preloading" << path;
+        image_viewer_->preload(path);
+    }
 }
 
 } // picpic

@@ -7,6 +7,11 @@
 
 namespace picpic {
 
+ImageLoader::ImageLoader(int size, QObject* parent)
+    : QThread(parent), size_{size}
+{
+}
+
 ImageLoader::~ImageLoader()
 {
     requestInterruption();
@@ -14,16 +19,13 @@ ImageLoader::~ImageLoader()
     wait();
 }
 
-void ImageLoader::cancel()
-{
-    std::unique_lock lock{mutex_};
-    requests_.clear();
-}
-
 void ImageLoader::load(const QString& path, QSize size)
 {
     std::unique_lock lock{mutex_};
     requests_.push_back(Request{path, size});
+    while (size_ > 0 && requests_.size() > size_) {
+        requests_.pop_front();
+    }
     cv_.notify_all();
 }
 
