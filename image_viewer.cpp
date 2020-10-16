@@ -56,6 +56,8 @@ void ImageViewer::setImagePath(const QString& path)
         return;
     }
 
+    setEnabled(false);
+    loader_.cancel();
     loader_.load(path);
 }
 
@@ -66,6 +68,7 @@ void ImageViewer::resizeEvent(QResizeEvent*)
 
 void ImageViewer::updatePixmap()
 {
+    setEnabled(true);
     if (pixmap_.isNull()) {
         clear();
     }

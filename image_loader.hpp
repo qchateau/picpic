@@ -18,6 +18,8 @@ signals:
 public:
     using QThread::QThread;
     ~ImageLoader() override;
+
+    void cancel();
     void load(const QString& path, QSize size = {});
 
 protected:

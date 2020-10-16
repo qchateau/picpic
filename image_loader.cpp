@@ -14,6 +14,12 @@ ImageLoader::~ImageLoader()
     wait();
 }
 
+void ImageLoader::cancel()
+{
+    std::unique_lock lock{mutex_};
+    requests_.clear();
+}
+
 void ImageLoader::load(const QString& path, QSize size)
 {
     std::unique_lock lock{mutex_};
