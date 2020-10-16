@@ -32,15 +32,24 @@ endif()
 
 set(SOURCES
     main.cpp
-    mainwindow.cpp
-    database.cpp
+    main_window.cpp
+    file_scanner.cpp
+    inserter.cpp
+    deleter.cpp
+    pic_model.cpp
     image_viewer.cpp
+    image_loader.cpp
     file_view.cpp
-    mainwindow.hpp
+    exporter.cpp
+    main_window.hpp
     file_scanner.hpp
-    database.hpp
+    inserter.hpp
+    deleter.hpp
+    pic_model.hpp
     image_viewer.hpp
+    image_loader.hpp
     file_view.hpp
+    exporter.hpp
 )
 
 if (WIN32)
@@ -58,7 +67,6 @@ target_include_directories(
     PUBLIC
     ${Qt5Widgets_INCLUDE_DIRS}
     ${Qt5Sql_INCLUDE_DIRS}
-    ${GUARDED_INCLUDE_DIR}
 )
 
 # Install main binary

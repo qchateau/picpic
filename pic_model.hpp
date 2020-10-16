@@ -6,15 +6,14 @@
 #include <QSqlTableModel>
 #include <QStringList>
 
+#include "image_loader.hpp"
+
 namespace picpic {
 
 QSqlDatabase openPicDatabase(const QString& path);
 
 class PicModel : public QSqlTableModel {
     Q_OBJECT
-signals:
-    void rowsChanged();
-
 public:
     enum Columns {
         kColId = 0,
@@ -23,10 +22,17 @@ public:
     };
 
     PicModel(QSqlDatabase db, QObject* parent);
-    void insert(const QString& path, int rating = 0);
-    bool removeRows(int row, int count, const QModelIndex& parent = QModelIndex())
-        override;
+
+    bool insert(const QString& path, int rating = 0);
     QVariant data(const QModelIndex& index, int role = Qt::DisplayRole) const override;
+
+protected:
+    void queryChange() override;
+
+private:
+    mutable ImageLoader loader_;
+    QMap<QString, QPixmap> thumbnails_;
+    mutable QMap<QString, QModelIndex> loading_indices_;
 };
 
 } // picpic

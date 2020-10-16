@@ -1,8 +1,8 @@
 #include "file_view.hpp"
-#include "database.hpp"
+#include "pic_model.hpp"
 
 #include <QHeaderView>
-#include <QKeyEvent>
+#include <QMessageBox>
 
 namespace picpic {
 
@@ -25,35 +25,15 @@ void FileView::setModel(QAbstractItemModel* model)
     setWordWrap(false);
 }
 
-void FileView::selectionChanged(
-    const QItemSelection& selected,
-    const QItemSelection& deselected)
+QVector<int> FileView::selectedRows() const
 {
-    QAbstractItemView::selectionChanged(selected, deselected);
-    if (selected.indexes().size() == 0) {
-        return;
+    auto selected_rows = selectionModel()->selectedRows();
+    QVector<int> rows;
+    rows.reserve(selected_rows.size());
+    for (const auto& select : selected_rows) {
+        rows.push_back(select.row());
     }
-
-    rowSelected(selected.indexes()[0]);
-}
-
-void FileView::keyPressEvent(QKeyEvent* event)
-{
-    switch (event->key()) {
-    case Qt::Key_Delete: {
-        qDebug() << "Delete";
-        QVector<int> rows;
-        for (const auto& select : this->selectedIndexes()) {
-            rows.push_back(select.row());
-        }
-        std::sort(rows.begin(), rows.end(), std::greater<int>{});
-        for (int row : rows) {
-            model()->removeRow(row);
-        }
-        break;
-    }
-    }
-    QTableView::keyPressEvent(event);
+    return rows;
 }
 
 } // picpic
