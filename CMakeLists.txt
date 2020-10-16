@@ -67,7 +67,6 @@ target_include_directories(
     PUBLIC
     ${Qt5Widgets_INCLUDE_DIRS}
     ${Qt5Sql_INCLUDE_DIRS}
-    ${GUARDED_INCLUDE_DIR}
 )
 
 # Install main binary
